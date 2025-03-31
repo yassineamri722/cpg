@@ -4,7 +4,6 @@ import { createStackNavigator } from "@react-navigation/stack";
 import LoginScreen from "./LoginScreen";
 import RegisterScreen from "./RegisterScreen";
 import HomeScreen from "./HomeScreen"; 
-import CandidatesScreen from "./CandidatesScreen"; 
 import ProductsScreen from "./ProductsScreen"; 
 import SiegeScreen from "./SiegeScreen"; 
 import SuiviProductScreen from "./SuiviProductScreen"; 
@@ -14,6 +13,8 @@ import ClientScreen from "./ClientScreen";
 import SuiviVenteScreen from "./SuiviVenteScreen";
 import FournisseurScreen from "./FournisseurScreen";
 import SuiviAchatScreen from "./SuiviAchatScreen"; 
+import UsersScreen from "./UsersScreen";
+import ProfilesScreen from "./ProfilesScreen";
 
 const Stack = createStackNavigator();
 
@@ -36,7 +37,8 @@ export default function App()
 
         {/* Main App Screens after successful login */}
         <Stack.Screen name="Home" component={HomeScreen} />
-        <Stack.Screen name="Candidats" component={CandidatesScreen} />
+        <Stack.Screen name="users" component={UsersScreen} />
+        <Stack.Screen name="profiles" component={ProfilesScreen}/>
 
         {/* Products Screens */}
         <Stack.Screen name="Produits" component={ProductsScreen} />

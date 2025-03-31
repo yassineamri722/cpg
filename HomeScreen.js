@@ -22,7 +22,7 @@ function HomeScreen() {
                 {/* Navigation Buttons Container */}
                 <View style={styles.buttonContainer}>
                     <View style={styles.buttonWrapper}>
-                        <Button title="candidats" onPress={() => navigation.navigate("Candidats")} />
+                        <Button title="candidats" onPress={() => navigation.navigate("users")} />
                     </View>
                     <View style={styles.buttonWrapper}>
                         <Button title="Produits" onPress={() => navigation.navigate("Produits")} />

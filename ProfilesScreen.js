@@ -1,21 +1,24 @@
 import React from "react";
 import { View, Text, FlatList, StyleSheet } from "react-native";
 
-const users = [
-  { id: "1", name: "Alice Doe", email: "alice@example.com" },
-  { id: "2", name: "Bob Smith", email: "bob@example.com" },
+// Liste des utilisateurs avec des informations supplémentaires
+const profiles = [
+  { id: "1", name: "Alice Doe", role: "Software Engineer" },
+  { id: "2", name: "Bob Smith", role: "Product Manager" },
+  { id: "3", name: "Charlie Brown", role: "UX Designer" },
+  { id: "4", name: "David Johnson", role: "Data Analyst" },
 ];
 
 function ProfilesScreen() {
   return (
     <View style={styles.container}>
       <FlatList
-        data={users}
+        data={profiles}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <View style={styles.card}>
             <Text style={styles.name}>{item.name}</Text>
-            <Text style={styles.email}>{item.email}</Text>
+            <Text style={styles.role}>{item.role}</Text>
           </View>
         )}
       />
@@ -44,7 +47,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "bold",
   },
-  email: {
+  role: {
     fontSize: 14,
     color: "#555",
   },
