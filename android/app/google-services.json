@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "446695520731",
+    "project_id": "cpg-erp",
+    "storage_bucket": "cpg-erp.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:446695520731:android:54e247f331aa946208cffe",
+        "android_client_info": {
+          "package_name": "com.cpg.cpg_erp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBxmLJu0jMyVUxJMB8Fh2LnkhKStwYBNoo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
