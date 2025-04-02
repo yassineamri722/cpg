@@ -1,44 +1,143 @@
-import React from "react";
-import { View, Text, Button, StyleSheet, FlatList, TouchableOpacity } from "react-native";
+import React, { useState, useEffect } from 'react';
+import { View, Text, TextInput, Button, FlatList, TouchableOpacity, Alert } from 'react-native';
+import { getProduits, addProduit, updateProduit, deleteProduit } from './firebaseServices'; // Assuming your functions are in a firebaseService file
 
-function ProductsScreen({ navigation })
-{
-    // Simulated products data
-    const products = [
-        { id: "1", name: "Produit A" },
-        { id: "2", name: "Produit B" },
-        { id: "3", name: "Produit C" },
-    ];
+const ProductScreen = ({ navigation }) => {  // Destructure `navigation` from props
+  const [produits, setProduits] = useState([]);
+  const [nom, setNom] = useState('');
+  const [siegeID, setSiegeID] = useState('');
+  const [type, setType] = useState('');
+  const [editID, setEditID] = useState(null);
 
-    const renderProduct = ({ item }) =>
-    {
-        return (
-            <TouchableOpacity onPress={() => navigation.navigate("SiegeScreen", { productId: item.id })}>
-                <View style={styles.productCard}>
-                    <Text style={styles.productName}>{item.name}</Text>
-                    <Button title=" Siège" onPress={() => navigation.navigate("Siège", { productId: item.id })} />
-                </View>
-            </TouchableOpacity>
-        );
+  useEffect(() => {
+    const fetchProduits = async () => {
+      const produitsList = await getProduits();
+      setProduits(produitsList);
     };
 
-    return (
-        <View style={styles.container}>
-            <Text style={styles.title}>Products</Text>
-            <FlatList
-                data={products}
-                renderItem={renderProduct}
-                keyExtractor={(item) => item.id}
-            />
-        </View>
-    );
-}
+    fetchProduits();
+  }, []);
 
-const styles = StyleSheet.create({
-    container: { flex: 1, padding: 20, backgroundColor: "#F5F5F5" },
-    title: { fontSize: 24, fontWeight: "bold", marginBottom: 20 },
-    productCard: { padding: 15, backgroundColor: "#fff", marginBottom: 10, borderRadius: 5, borderWidth: 1, borderColor: "#ccc" },
-    productName: { fontSize: 18, fontWeight: "bold" },
-});
+  const handleAddProduit = async () => {
+    if (nom && siegeID && type) {
+      const newProduitID = await addProduit(nom, siegeID, type);
+      setProduits((prevProduits) => [
+        ...prevProduits,
+        { id: newProduitID, nom, siegeID, type },
+      ]);
+      setNom('');
+      setSiegeID('');
+      setType('');
+    } else {
+      Alert.alert("Erreur", "Tous les champs doivent être remplis");
+    }
+  };
 
-export default ProductsScreen;
+  const handleUpdateProduit = async () => {
+    if (editID && nom && siegeID && type) {
+      await updateProduit(editID, { nom, siegeID, type });
+      setProduits((prevProduits) =>
+        prevProduits.map((produit) =>
+          produit.id === editID
+            ? { ...produit, nom, siegeID, type }
+            : produit
+        )
+      );
+      setNom('');
+      setSiegeID('');
+      setType('');
+      setEditID(null);
+    } else {
+      Alert.alert("Erreur", "Tous les champs doivent être remplis");
+    }
+  };
+
+  const handleDeleteProduit = async (id) => {
+    Alert.alert('Confirmation', 'Voulez-vous vraiment supprimer ce produit ?', [
+      {
+        text: 'Annuler',
+        style: 'cancel',
+      },
+      {
+        text: 'Supprimer',
+        onPress: async () => {
+          await deleteProduit(id);
+          setProduits((prevProduits) => prevProduits.filter((produit) => produit.id !== id));
+        },
+      },
+    ]);
+  };
+
+  const handleEditProduit = (produit) => {
+    setNom(produit.nom);
+    setSiegeID(produit.siegeID);
+    setType(produit.type);
+    setEditID(produit.id);
+  };
+
+  // Navigate to SiegeScreen when a product is clicked
+  const handleViewSiege = (siegeID) => {
+    navigation.navigate('Siège', { siegeID }); // Passing siegeID as a parameter
+  };
+
+  return (
+    <View style={{ padding: 20 }}>
+      <TextInput
+        placeholder="Nom du produit"
+        value={nom}
+        onChangeText={setNom}
+        style={{ borderBottomWidth: 1, marginBottom: 10 }}
+      />
+      <TextInput
+        placeholder="ID du siège"
+        value={siegeID}
+        onChangeText={setSiegeID}
+        style={{ borderBottomWidth: 1, marginBottom: 10 }}
+      />
+      <TextInput
+        placeholder="Type"
+        value={type}
+        onChangeText={setType}
+        style={{ borderBottomWidth: 1, marginBottom: 20 }}
+      />
+      <Button
+        title={editID ? 'Mettre à jour le produit' : 'Ajouter le produit'}
+        onPress={editID ? handleUpdateProduit : handleAddProduit}
+      />
+      
+      <FlatList
+        data={produits}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <View
+            style={{
+              padding: 10,
+              borderBottomWidth: 1,
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+            }}
+          >
+            <View>
+              <Text>{item.nom}</Text>
+              <Text>{item.siegeID}</Text>
+              <Text>{item.type}</Text>
+            </View>
+            <View style={{ flexDirection: 'row' }}>
+              <TouchableOpacity onPress={() => handleEditProduit(item)} style={{ marginRight: 10 }}>
+                <Text style={{ color: 'blue' }}>Éditer</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => handleDeleteProduit(item.id)}>
+                <Text style={{ color: 'red' }}>Supprimer</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => handleViewSiege(item.siegeID)}>
+                <Text style={{ color: 'green' }}>Voir Siège</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+      />
+    </View>
+  );
+};
+
+export default ProductScreen;
