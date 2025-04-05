@@ -1,52 +1,171 @@
-import React from "react";
-import { View, Text, Button, StyleSheet } from "react-native";
+import React, { useState, useEffect } from 'react';
+import { View, Text, TextInput, Button, Alert, ScrollView } from 'react-native';
+import { 
+  getProduits, 
+  getSieges, 
+  addSuiviProduit, 
+  updateSuiviProduit, 
+  deleteSuiviProduit 
+} from './firebaseServices';
 
-function SuiviProductScreen({ route, navigation })
-{
-    const { productId } = route.params;
+const SuiviProduitScreen = ({ route, navigation }) => {
+  const [codeProduit, setCodeProduit] = useState('');
+  const [idSiege, setIdSiege] = useState('');
+  const [quantite, setQuantite] = useState('');
+  const [user, setUser] = useState('');
 
-    // Simulated Suivi Product data
-    const suiviData = {
-        "1": [
-            { date: "2025-01-25", update: "Product shipped" },
-            { date: "2025-01-26", update: "Product in transit" },
-        ],
-        "2": [
-            { date: "2025-02-10", update: "Product restocked" },
-            { date: "2025-02-12", update: "Product shipped" },
-        ],
-        "3": [
-            { date: "2025-03-05", update: "Product received" },
-            { date: "2025-03-06", update: "Product checked" },
-        ],
+  const [produits, setProduits] = useState([]);
+  const [sieges, setSieges] = useState([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const produitsList = await getProduits();
+      const siegesList = await getSieges();
+      setProduits(produitsList);
+      setSieges(siegesList);
+    };
+    fetchData();
+
+    // Pré-remplissage en cas d'édition
+    if (route.params?.isEdit) {
+      const { suivi } = route.params;
+      setCodeProduit(suivi.code_produit);
+      setIdSiege(suivi.id_siege);
+      setQuantite(suivi.quantite?.toString() || '');
+      setUser(suivi.user_saisie || '');
+    }
+  }, []);
+
+  const handleSave = async () => {
+    if (!codeProduit || !idSiege || !quantite || !user) {
+      Alert.alert("Erreur", "Tous les champs sont obligatoires");
+      return;
+    }
+
+    const produitExistant = produits.some(p => p.code_produit === codeProduit);
+    const siegeExistant = sieges.some(s => s.id_siege === idSiege);
+
+    if (!produitExistant) {
+      Alert.alert('Erreur', 'Produit inexistant');
+      return;
+    }
+
+    if (!siegeExistant) {
+      Alert.alert('Erreur', 'Siège inexistant');
+      return;
+    }
+
+    const data = {
+      code_produit: codeProduit,
+      id_siege: idSiege,
+      quantite: parseInt(quantite),
+      user_saisie: user,
     };
 
-    const suivi = suiviData[productId] || [];
+    try {
+      if (route.params?.isEdit) {
+        await updateSuiviProduit(codeProduit, idSiege, data);
+        Alert.alert("Succès", "Suivi produit mis à jour !");
+      } else {
+        await addSuiviProduit(codeProduit, idSiege, data);
+        Alert.alert("Succès", "Suivi produit ajouté !");
+      }
+      navigation.goBack();
+    } catch (error) {
+      console.error(error);
+      Alert.alert("Erreur", "Une erreur est survenue");
+    }
+  };
 
-    return (
-        <View style={styles.container}>
-            <Text style={styles.title}>Product Tracking</Text>
-            {suivi.length > 0 ? (
-                suivi.map((update, index) => (
-                    <View key={index} style={styles.updateCard}>
-                        <Text style={styles.updateDate}>Date: {update.date}</Text>
-                        <Text>Update: {update.update}</Text>
-                    </View>
-                ))
-            ) : (
-                <Text>No tracking updates available.</Text>
-            )}
-
-           
-        </View>
+  const handleDelete = async () => {
+    Alert.alert(
+      "Confirmer",
+      "Voulez-vous vraiment supprimer ce suivi produit ?",
+      [
+        { text: "Annuler", style: "cancel" },
+        {
+          text: "Supprimer",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await deleteSuiviProduit(codeProduit, idSiege);
+              Alert.alert("Supprimé", "Suivi supprimé !");
+              navigation.goBack();
+            } catch (err) {
+              Alert.alert("Erreur", err.message);
+            }
+          },
+        },
+      ]
     );
-}
+  };
 
-const styles = StyleSheet.create({
-    container: { flex: 1, padding: 20, backgroundColor: "#F5F5F5" },
-    title: { fontSize: 24, fontWeight: "bold", marginBottom: 20 },
-    updateCard: { padding: 15, marginBottom: 10, backgroundColor: "#fff", borderRadius: 5, borderWidth: 1, borderColor: "#ccc" },
-    updateDate: { fontWeight: "bold" },
-});
+  return (
+    <ScrollView contentContainerStyle={{ padding: 20 }}>
+      <Text style={styles.title}>
+        {route.params?.isEdit ? 'Modifier Suivi Produit' : 'Ajouter Suivi Produit'}
+      </Text>
 
-export default SuiviProductScreen;
+      <TextInput
+        value={codeProduit}
+        onChangeText={setCodeProduit}
+        placeholder="Code Produit"
+        style={styles.input}
+      />
+
+      <TextInput
+        value={idSiege}
+        onChangeText={setIdSiege}
+        placeholder="ID Siège"
+        style={styles.input}
+      />
+
+      <TextInput
+        value={quantite}
+        onChangeText={setQuantite}
+        placeholder="Quantité"
+        keyboardType="numeric"
+        style={styles.input}
+      />
+
+      <TextInput
+        value={user}
+        onChangeText={setUser}
+        placeholder="Utilisateur"
+        style={styles.input}
+      />
+
+      <Button
+        title={route.params?.isEdit ? 'Mettre à jour' : 'Ajouter'}
+        onPress={handleSave}
+      />
+
+      {route.params?.isEdit && (
+        <View style={{ marginTop: 10 }}>
+          <Button
+            title="Supprimer"
+            onPress={handleDelete}
+            color="red"
+          />
+        </View>
+      )}
+    </ScrollView>
+  );
+};
+
+const styles = {
+  input: {
+    borderWidth: 1,
+    padding: 10,
+    marginVertical: 8,
+    borderRadius: 5,
+    borderColor: '#ccc',
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 15,
+  },
+};
+
+export default SuiviProduitScreen;

@@ -42,7 +42,7 @@ export default function App()
 
         {/* Products Screens */}
         <Stack.Screen name="Produits" component={ProductsScreen} />
-        <Stack.Screen name="Siège" component={SiegeScreen} />
+        <Stack.Screen name="Siege" component={SiegeScreen} />
         <Stack.Screen name="SuiviProductScreen" component={SuiviProductScreen} />
 
         {/* Sales Screens */}
