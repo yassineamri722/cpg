@@ -1,171 +1,245 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, Button, Alert, ScrollView } from 'react-native';
-import { 
-  getProduits, 
-  getSieges, 
-  addSuiviProduit, 
-  updateSuiviProduit, 
-  deleteSuiviProduit 
-} from './firebaseServices';
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  TextInput,
+  Button,
+  FlatList,
+  StyleSheet,
+  Alert,
+} from "react-native";
+import { getDatabase, ref, get, push, update, remove } from "firebase/database";
 
-const SuiviProduitScreen = ({ route, navigation }) => {
-  const [codeProduit, setCodeProduit] = useState('');
-  const [idSiege, setIdSiege] = useState('');
-  const [quantite, setQuantite] = useState('');
-  const [user, setUser] = useState('');
+const db = getDatabase();
 
-  const [produits, setProduits] = useState([]);
-  const [sieges, setSieges] = useState([]);
+export default function SuiviProduitScreen() {
+  const [codeProduit, setCodeProduit] = useState("");
+  const [codeSiege, setCodeSiege] = useState("");
+  const [qteProduction, setQteProduction] = useState("");
+  const [suiviProduits, setSuiviProduits] = useState([]);
+  const [editKey, setEditKey] = useState(null);
 
   useEffect(() => {
-    const fetchData = async () => {
-      const produitsList = await getProduits();
-      const siegesList = await getSieges();
-      setProduits(produitsList);
-      setSieges(siegesList);
-    };
-    fetchData();
-
-    // Pré-remplissage en cas d'édition
-    if (route.params?.isEdit) {
-      const { suivi } = route.params;
-      setCodeProduit(suivi.code_produit);
-      setIdSiege(suivi.id_siege);
-      setQuantite(suivi.quantite?.toString() || '');
-      setUser(suivi.user_saisie || '');
-    }
+    fetchSuiviProduits();
   }, []);
 
-  const handleSave = async () => {
-    if (!codeProduit || !idSiege || !quantite || !user) {
-      Alert.alert("Erreur", "Tous les champs sont obligatoires");
+  const fetchSuiviProduits = async () => {
+    try {
+      const snapshot = await get(ref(db, "suivi_produits"));
+      const data = snapshot.val();
+      if (data) {
+        const suiviList = Object.entries(data).map(([id, value]) => ({
+          id,
+          ...value,
+        }));
+        setSuiviProduits(suiviList);
+      } else {
+        setSuiviProduits([]);
+      }
+    } catch (error) {
+      console.error("Erreur de chargement:", error);
+    }
+  };
+
+  // Fonction de validation pour vérifier la présence du produit et du siège
+  const controleCodes = async () => {
+    try {
+      const produitSnapshot = await get(ref(db, `produits/${codeProduit}`));
+      const siegeSnapshot = await get(ref(db, `sieges/${codeSiege}`));
+
+      // Vérification de l'existence du produit
+      if (!produitSnapshot.exists()) {
+        Alert.alert("Erreur", "Produit introuvable");
+        return false;
+      }
+
+      // Vérification de l'existence du siège
+      if (!siegeSnapshot.exists()) {
+        Alert.alert("Erreur", "Siège introuvable");
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error("Erreur de validation des codes:", error);
+      Alert.alert("Erreur", "Problème de validation des codes");
+      return false;
+    }
+  };
+
+  const handleEnregistrer = async () => {
+    if (!codeProduit || !codeSiege || !qteProduction) {
+      Alert.alert("Erreur", "Tous les champs sont requis");
       return;
     }
 
-    const produitExistant = produits.some(p => p.code_produit === codeProduit);
-    const siegeExistant = sieges.some(s => s.id_siege === idSiege);
+    const isValid = await controleCodes(); // Vérifie les codes produit et siège
+    if (!isValid) return;
 
-    if (!produitExistant) {
-      Alert.alert('Erreur', 'Produit inexistant');
-      return;
-    }
-
-    if (!siegeExistant) {
-      Alert.alert('Erreur', 'Siège inexistant');
-      return;
-    }
-
-    const data = {
-      code_produit: codeProduit,
-      id_siege: idSiege,
-      quantite: parseInt(quantite),
-      user_saisie: user,
+    const suiviProduit = {
+      codeProduit,
+      codeSiege,
+      qteProduction: parseInt(qteProduction),
+      date: new Date().toISOString(),
     };
 
     try {
-      if (route.params?.isEdit) {
-        await updateSuiviProduit(codeProduit, idSiege, data);
-        Alert.alert("Succès", "Suivi produit mis à jour !");
+      if (editKey) {
+        // Mise à jour si l'élément existe déjà
+        await update(ref(db, `suivi_produits/${editKey}`), {
+          qteProduction: suiviProduit.qteProduction,
+        });
+        setEditKey(null);
       } else {
-        await addSuiviProduit(codeProduit, idSiege, data);
-        Alert.alert("Succès", "Suivi produit ajouté !");
+        // Ajout d'un nouvel élément
+        await push(ref(db, "suivi_produits"), suiviProduit);
       }
-      navigation.goBack();
+      fetchSuiviProduits();
+      resetForm();
     } catch (error) {
-      console.error(error);
-      Alert.alert("Erreur", "Une erreur est survenue");
+      console.error("Erreur d'enregistrement:", error);
+      Alert.alert("Erreur", "Impossible d'enregistrer le suivi");
     }
   };
 
-  const handleDelete = async () => {
-    Alert.alert(
-      "Confirmer",
-      "Voulez-vous vraiment supprimer ce suivi produit ?",
-      [
-        { text: "Annuler", style: "cancel" },
-        {
-          text: "Supprimer",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await deleteSuiviProduit(codeProduit, idSiege);
-              Alert.alert("Supprimé", "Suivi supprimé !");
-              navigation.goBack();
-            } catch (err) {
-              Alert.alert("Erreur", err.message);
-            }
-          },
+  const handleSupprimer = (id) => {
+    Alert.alert("Confirmation", "Voulez-vous supprimer ce suivi ?", [
+      { text: "Annuler" },
+      {
+        text: "Supprimer",
+        onPress: async () => {
+          try {
+            await remove(ref(db, `suivi_produits/${id}`));
+            fetchSuiviProduits();
+          } catch (error) {
+            console.error("Erreur de suppression:", error);
+            Alert.alert("Erreur", "Suppression échouée");
+          }
         },
-      ]
-    );
+        style: "destructive",
+      },
+    ]);
+  };
+
+  const chargerSuiviProduit = (suiviProduit) => {
+    setCodeProduit(suiviProduit.codeProduit);
+    setCodeSiege(suiviProduit.codeSiege);
+    setQteProduction(String(suiviProduit.qteProduction));
+    setEditKey(suiviProduit.id);
+  };
+
+  const resetForm = () => {
+    setCodeProduit("");
+    setCodeSiege("");
+    setQteProduction("");
+    setEditKey(null);
   };
 
   return (
-    <ScrollView contentContainerStyle={{ padding: 20 }}>
-      <Text style={styles.title}>
-        {route.params?.isEdit ? 'Modifier Suivi Produit' : 'Ajouter Suivi Produit'}
-      </Text>
+    <View style={styles.container}>
+      <Text style={styles.title}>Suivi des Produits</Text>
 
       <TextInput
-        value={codeProduit}
-        onChangeText={setCodeProduit}
+        style={styles.input}
         placeholder="Code Produit"
-        style={styles.input}
+        value={codeProduit}
+        onChangeText={setCodeProduit} // Permet de modifier le code produit
       />
-
       <TextInput
-        value={idSiege}
-        onChangeText={setIdSiege}
-        placeholder="ID Siège"
         style={styles.input}
+        placeholder="Code Siège"
+        value={codeSiege}
+        onChangeText={setCodeSiege} // Permet de modifier le code siège
       />
-
       <TextInput
-        value={quantite}
-        onChangeText={setQuantite}
-        placeholder="Quantité"
+        style={styles.input}
+        placeholder="Quantité de production"
+        value={qteProduction}
         keyboardType="numeric"
-        style={styles.input}
-      />
-
-      <TextInput
-        value={user}
-        onChangeText={setUser}
-        placeholder="Utilisateur"
-        style={styles.input}
+        onChangeText={setQteProduction}
       />
 
       <Button
-        title={route.params?.isEdit ? 'Mettre à jour' : 'Ajouter'}
-        onPress={handleSave}
+        title={editKey ? "Modifier Suivi" : "Ajouter Suivi"}
+        onPress={handleEnregistrer}
       />
 
-      {route.params?.isEdit && (
+      {editKey && (
         <View style={{ marginTop: 10 }}>
-          <Button
-            title="Supprimer"
-            onPress={handleDelete}
-            color="red"
-          />
+          <Button title="Annuler modification" color="orange" onPress={resetForm} />
         </View>
       )}
-    </ScrollView>
-  );
-};
 
-const styles = {
-  input: {
-    borderWidth: 1,
-    padding: 10,
-    marginVertical: 8,
-    borderRadius: 5,
-    borderColor: '#ccc',
+      <FlatList
+        data={suiviProduits}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <View style={styles.suiviItem}>
+            <Text style={styles.suiviText}>
+              Produit: {item.codeProduit} | Siège: {item.codeSiege}
+            </Text>
+            <Text style={styles.suiviText}>
+              Quantité: {item.qteProduction}
+            </Text>
+            <Text style={styles.suiviText}>
+              Date: {new Date(item.date).toLocaleString()}
+            </Text>
+            <View style={styles.buttons}>
+              <Button title="Modifier" onPress={() => chargerSuiviProduit(item)} />
+              <Button
+                title="Supprimer"
+                color="red"
+                onPress={() => handleSupprimer(item.id)}
+              />
+            </View>
+          </View>
+        )}
+        ListEmptyComponent={
+          <Text style={styles.empty}>Aucun suivi de produit enregistré</Text>
+        }
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 20,
+    backgroundColor: "#f8f8f8",
   },
   title: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 15,
+    fontSize: 22,
+    fontWeight: "bold",
+    marginBottom: 20,
+    textAlign: "center",
   },
-};
-
-export default SuiviProduitScreen;
+  input: {
+    borderWidth: 1,
+    borderColor: "#ccc",
+    padding: 10,
+    marginBottom: 10,
+    borderRadius: 6,
+    backgroundColor: "#fff",
+  },
+  suiviItem: {
+    backgroundColor: "#e0e0e0",
+    padding: 12,
+    marginBottom: 10,
+    borderRadius: 8,
+  },
+  suiviText: {
+    fontSize: 15,
+    marginBottom: 2,
+  },
+  buttons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 10,
+  },
+  empty: {
+    textAlign: "center",
+    marginTop: 20,
+    color: "#888",
+  },
+});

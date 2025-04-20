@@ -2,10 +2,10 @@ import React from "react";
 import { View, Text, StyleSheet, Button, ImageBackground } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 
-// Assurez-vous que le chemin de l'image est correct
-const image = require('./assets/شركة-فسفاط-قفصة.jpg');  // Remplacez par le chemin de votre image
+const image = require('./assets/شركة-فسفاط-قفصة.jpg');
 
-function HomeScreen() {
+function HomeScreen()
+{
     const navigation = useNavigation();
 
     return (
@@ -22,16 +22,20 @@ function HomeScreen() {
                 {/* Navigation Buttons Container */}
                 <View style={styles.buttonContainer}>
                     <View style={styles.buttonWrapper}>
-                        <Button title="candidats" onPress={() => navigation.navigate("users")} />
+                        <Button title="Produits" onPress={() => navigation.navigate("ProduitsTabs")} />
                     </View>
                     <View style={styles.buttonWrapper}>
-                        <Button title="Produits" onPress={() => navigation.navigate("Produits")} />
+                        <Button title="Ventes" onPress={() => navigation.navigate("VentesTabs")} />
                     </View>
                     <View style={styles.buttonWrapper}>
-                        <Button title="Ventes" onPress={() => navigation.navigate("Produit vendu")} />
+                        <Button title="Achats" onPress={() => navigation.navigate("AchatsTabs")} />
                     </View>
                     <View style={styles.buttonWrapper}>
-                        <Button title="Achats" onPress={() => navigation.navigate("Article acheté")} />
+                        <Button title="Candidats" onPress={() => navigation.navigate("CandidatsTabs")} />
+                    </View>
+                    {/* ✅ Ajout du bouton Audit */}
+                    <View style={styles.buttonWrapper}>
+                        <Button title="Audit" onPress={() => navigation.navigate("AuditTabs")} />
                     </View>
                 </View>
             </View>
@@ -41,15 +45,15 @@ function HomeScreen() {
 
 const styles = StyleSheet.create({
     image: {
-        flex: 1,  // Permet à l'image de couvrir tout l'écran
-        justifyContent: "center", // Centre le contenu
-        alignItems: "center", // Centre horizontalement
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
     },
     container: {
         flex: 1,
         justifyContent: "center",
         alignItems: "center",
-        backgroundColor: "rgba(242, 242, 242, 0.8)",  // Ajout d'une transparence à l'arrière-plan pour que l'image ne gêne pas la lisibilité
+        backgroundColor: "rgba(242, 242, 242, 0.8)",
         padding: 20,
         borderRadius: 10,
     },

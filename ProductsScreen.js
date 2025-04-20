@@ -1,116 +1,125 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, Button, FlatList, Alert } from 'react-native';
-import { addProduit, getProduits, updateProduit, deleteProduit } from './firebaseServices';  // Importer vos fonctions Firebase
+import React, { useState, useEffect } from "react";
+import { View, Text, TextInput, Button, FlatList, Alert, StyleSheet } from "react-native";
+import { ref, set, remove, onValue } from "firebase/database";
+import { database } from "./firebaseconfig";
 
-const ProductsScreen = ({ navigation }) => {  // Recevez la prop 'navigation' ici
-  const [produits, setProduits] = useState([]);  // Liste des produits
-  const [codeProduit, setCodeProduit] = useState('');  // Code du produit pour mise à jour ou suppression
-  const [libelleProduit, setLibelleProduit] = useState('');  // Libellé du produit
+export default function ProductsScreen() {
+  const [produits, setProduits] = useState([]);
+  const [code, setCode] = useState('');
+  const [libelle, setLibelle] = useState('');
+  const [editing, setEditing] = useState(null);
 
-  // Récupérer les produits lors du montage du composant
   useEffect(() => {
-    const fetchProduits = async () => {
-      const produitsList = await getProduits();
-      setProduits(produitsList);
-    };
-    fetchProduits();
+    const dbRef = ref(database, 'produits');
+    const unsubscribe = onValue(dbRef, snapshot => {
+      const data = snapshot.val();
+      if (data) {
+        const list = Object.values(data);
+        setProduits(list);
+      } else {
+        setProduits([]);
+      }
+    });
+
+    return () => unsubscribe();
   }, []);
 
-  // Fonction pour ajouter un produit
-  const handleAddProduit = async () => {
-    if (codeProduit && libelleProduit) {
-      await addProduit(codeProduit, libelleProduit);
-      setProduits((prevState) => [
-        ...prevState,
-        { code_produit: codeProduit, libelle_produit: libelleProduit },
-      ]);
-      setCodeProduit('');
-      setLibelleProduit('');
-    } else {
-      Alert.alert('Erreur', 'Veuillez remplir tous les champs');
+  const handleSave = () => {
+    if (!code || !libelle) {
+      Alert.alert("Champs requis", "Veuillez remplir tous les champs.");
+      return;
     }
+
+    const codeNum = parseInt(code);
+    if (isNaN(codeNum)) {
+      Alert.alert("Code invalide", "Le code doit être un entier.");
+      return;
+    }
+
+    const produitRef = ref(database, `produits/${codeNum}`);
+    set(produitRef, {
+      code_produit: codeNum,
+      libelle_produit: libelle.trim()
+    })
+      .then(() => {
+        Alert.alert("Succès", editing ? "Produit modifié." : "Produit ajouté.");
+        resetForm();
+      })
+      .catch(err => console.error("Erreur :", err));
   };
 
-  // Fonction pour mettre à jour un produit
-  const handleUpdateProduit = async () => {
-    if (codeProduit && libelleProduit) {
-      await updateProduit(codeProduit, { libelle_produit: libelleProduit });
-      setProduits((prevState) =>
-        prevState.map((produit) =>
-          produit.code_produit === codeProduit
-            ? { ...produit, libelle_produit: libelleProduit }
-            : produit
-        )
-      );
-      setCodeProduit('');
-      setLibelleProduit('');
-    } else {
-      Alert.alert('Erreur', 'Veuillez spécifier le produit à mettre à jour');
-    }
+  const handleEdit = (produit) => {
+    setCode(produit.code_produit.toString());
+    setLibelle(produit.libelle_produit);
+    setEditing(produit.code_produit);
   };
 
-  // Fonction pour supprimer un produit
-  const handleDeleteProduit = async (codeProduit) => {
-    await deleteProduit(codeProduit);
-    setProduits((prevState) =>
-      prevState.filter((produit) => produit.code_produit !== codeProduit)
-    );
+  const handleDelete = (code_produit) => {
+    Alert.alert("Confirmation", "Supprimer ce produit ?", [
+      { text: "Annuler", style: "cancel" },
+      {
+        text: "Supprimer", style: "destructive",
+        onPress: () => {
+          const produitRef = ref(database, `produits/${code_produit}`);
+          remove(produitRef)
+            .then(() => Alert.alert("Produit supprimé"))
+            .catch(err => console.error("Erreur suppression :", err));
+        }
+      }
+    ]);
+  };
+
+  const resetForm = () => {
+    setCode('');
+    setLibelle('');
+    setEditing(null);
   };
 
   return (
-    <View style={{ padding: 20 }}>
-      <Text>Liste des Produits</Text>
+    <View style={styles.container}>
+      <Text style={styles.title}>Gestion des Produits</Text>
 
-      {/* Liste des produits */}
+      <TextInput
+        style={styles.input}
+        placeholder="Code du produit"
+        value={code}
+        onChangeText={setCode}
+        keyboardType="numeric"
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="Libellé du produit"
+        value={libelle}
+        onChangeText={setLibelle}
+      />
+
+      <Button title={editing ? "Modifier le produit" : "Ajouter le produit"} onPress={handleSave} />
+      {editing && <Button title="Annuler" color="gray" onPress={resetForm} />}
+
       <FlatList
         data={produits}
-        keyExtractor={(item) => item.code_produit}
+        keyExtractor={item => item.code_produit.toString()}
         renderItem={({ item }) => (
-          <View style={{ flexDirection: 'row', marginVertical: 10 }}>
-            <Text style={{ flex: 1 }}>
+          <View style={styles.item}>
+            <Text style={styles.itemText}>
               {item.code_produit} - {item.libelle_produit}
             </Text>
-            <Button
-              title="Supprimer"
-              onPress={() => handleDeleteProduit(item.code_produit)}
-            />
-            <Button
-              title="Mettre à jour"
-              onPress={() => {
-                setCodeProduit(item.code_produit);
-                setLibelleProduit(item.libelle_produit);
-              }}
-            />
+            <View style={styles.buttonGroup}>
+              <Button title="Modifier" onPress={() => handleEdit(item)} />
+              <Button title="Supprimer" color="red" onPress={() => handleDelete(item.code_produit)} />
+            </View>
           </View>
         )}
       />
-
-      {/* Formulaire pour ajouter un produit */}
-      <TextInput
-        value={codeProduit}
-        onChangeText={setCodeProduit}
-        placeholder="Code produit"
-        style={{ borderWidth: 1, padding: 10, marginVertical: 5 }}
-      />
-      <TextInput
-        value={libelleProduit}
-        onChangeText={setLibelleProduit}
-        placeholder="Libellé produit"
-        style={{ borderWidth: 1, padding: 10, marginVertical: 5 }}
-      />
-
-      <Button title="Ajouter Produit" onPress={handleAddProduit} />
-      {codeProduit ? (
-        <Button title="Mettre à jour Produit" onPress={handleUpdateProduit} />
-      ) : null}
-
-      {/* Naviguer vers SiegeScreen */}
-      <Button
-        title="Voir les Sièges"
-        onPress={() => navigation.navigate('Siege')} // Navigation vers SiegeScreen
-      />
     </View>
   );
-};
+}
 
-export default ProductsScreen;
+const styles = StyleSheet.create({
+  container: { flex: 1, padding: 20, backgroundColor: "#fff" },
+  title: { fontSize: 22, fontWeight: "bold", marginBottom: 20, textAlign: "center" },
+  input: { borderWidth: 1, borderColor: "#ccc", borderRadius: 5, padding: 10, marginBottom: 10 },
+  item: { padding: 10, borderWidth: 1, borderColor: "#ddd", borderRadius: 5, marginTop: 15 },
+  itemText: { fontSize: 16, marginBottom: 10 },
+  buttonGroup: { flexDirection: "row", justifyContent: "space-between" },
+});

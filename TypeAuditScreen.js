@@ -3,21 +3,21 @@ import { View, Text, TextInput, Button, FlatList, Alert, StyleSheet } from "reac
 import { ref, set, remove, onValue } from "firebase/database";
 import { database } from "./firebaseconfig";
 
-export default function ProfileScreen() {
-  const [profiles, setProfiles] = useState([]);
+export default function TypeAuditScreen() {
+  const [types, setTypes] = useState([]);
   const [code, setCode] = useState('');
   const [libelle, setLibelle] = useState('');
   const [editing, setEditing] = useState(null);
 
   useEffect(() => {
-    const dbRef = ref(database, 'profiles');
+    const dbRef = ref(database, 'type_audit');
     const unsubscribe = onValue(dbRef, snapshot => {
       const data = snapshot.val();
       if (data) {
         const list = Object.values(data);
-        setProfiles(list);
+        setTypes(list);
       } else {
-        setProfiles([]);
+        setTypes([]);
       }
     });
 
@@ -30,39 +30,33 @@ export default function ProfileScreen() {
       return;
     }
 
-    const codeNum = parseInt(code);
-    if (isNaN(codeNum)) {
-      Alert.alert("Code invalide", "Le code doit être un entier.");
-      return;
-    }
-
-    const profileRef = ref(database, `profiles/${codeNum}`);
-    set(profileRef, {
-      code_profile: codeNum,
-      libelle_profile: libelle.trim()
+    const typeRef = ref(database, `type_audit/${code}`);
+    set(typeRef, {
+      code_audit: code.trim(),
+      lib_audit: libelle.trim()
     })
       .then(() => {
-        Alert.alert("Succès", editing ? "Profil modifié." : "Profil ajouté.");
+        Alert.alert("Succès", editing ? "Type audit modifié." : "Type audit ajouté.");
         resetForm();
       })
       .catch(err => console.error("Erreur :", err));
   };
 
-  const handleEdit = (profile) => {
-    setCode(profile.code_profile.toString());
-    setLibelle(profile.libelle_profile);
-    setEditing(profile.code_profile);
+  const handleEdit = (item) => {
+    setCode(item.code_audit);
+    setLibelle(item.lib_audit);
+    setEditing(item.code_audit);
   };
 
-  const handleDelete = (code_profile) => {
-    Alert.alert("Confirmation", "Supprimer ce profil ?", [
+  const handleDelete = (code) => {
+    Alert.alert("Confirmation", "Supprimer ce type d'audit ?", [
       { text: "Annuler", style: "cancel" },
       {
         text: "Supprimer", style: "destructive",
         onPress: () => {
-          const profileRef = ref(database, `profiles/${code_profile}`);
-          remove(profileRef)
-            .then(() => Alert.alert("Profil supprimé"))
+          const typeRef = ref(database, `type_audit/${code}`);
+          remove(typeRef)
+            .then(() => Alert.alert("Type audit supprimé"))
             .catch(err => console.error("Erreur suppression :", err));
         }
       }
@@ -77,36 +71,33 @@ export default function ProfileScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Gestion des Profils</Text>
+      <Text style={styles.title}>Ajouter Type Audit</Text>
 
       <TextInput
         style={styles.input}
-        placeholder="Code du profil"
+        placeholder="Code"
         value={code}
         onChangeText={setCode}
-        keyboardType="numeric"
       />
       <TextInput
         style={styles.input}
-        placeholder="Libellé du profil"
+        placeholder="Libellé"
         value={libelle}
         onChangeText={setLibelle}
       />
 
-      <Button title={editing ? "Modifier le profil" : "Ajouter le profil"} onPress={handleSave} />
+      <Button title={editing ? "Modifier" : "Ajouter"} onPress={handleSave} />
       {editing && <Button title="Annuler" color="gray" onPress={resetForm} />}
 
       <FlatList
-        data={profiles}
-        keyExtractor={item => item.code_profile.toString()}
+        data={types}
+        keyExtractor={item => item.code_audit}
         renderItem={({ item }) => (
           <View style={styles.item}>
-            <Text style={styles.itemText}>
-              {item.code_profile} - {item.libelle_profile}
-            </Text>
+            <Text style={styles.itemText}>{item.code_audit} - {item.lib_audit}</Text>
             <View style={styles.buttonGroup}>
               <Button title="Modifier" onPress={() => handleEdit(item)} />
-              <Button title="Supprimer" color="red" onPress={() => handleDelete(item.code_profile)} />
+              <Button title="Supprimer" color="red" onPress={() => handleDelete(item.code_audit)} />
             </View>
           </View>
         )}
@@ -123,5 +114,3 @@ const styles = StyleSheet.create({
   itemText: { fontSize: 16, marginBottom: 10 },
   buttonGroup: { flexDirection: "row", justifyContent: "space-between" },
 });
-
-
