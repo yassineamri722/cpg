@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, TextInput, Button, FlatList, Alert, StyleSheet } from "react-native";
+import { View, Text, TextInput, FlatList, Alert, TouchableOpacity } from "react-native";
 import { ref, set, onValue, get, remove } from "firebase/database";
 import { database } from "./firebaseconfig";
+import styles from './globalStyles';
 
-export default function SuiviProfileScreen() {
+export default function SuiviProfileScreen()
+{
   const [suivis, setSuivis] = useState([]);
   const [matricule, setMatricule] = useState('');
   const [codeProfile, setCodeProfile] = useState('');
@@ -12,14 +14,18 @@ export default function SuiviProfileScreen() {
   const [motpass, setMotpass] = useState('');
   const [modificationMode, setModificationMode] = useState(false);
 
-  useEffect(() => {
+  useEffect(() =>
+  {
     const suivisRef = ref(database, 'suivi_profiles');
-    const unsubscribe = onValue(suivisRef, snapshot => {
+    const unsubscribe = onValue(suivisRef, snapshot =>
+    {
       const data = snapshot.val();
-      if (data) {
+      if (data)
+      {
         const list = Object.values(data);
         setSuivis(list);
-      } else {
+      } else
+      {
         setSuivis([]);
       }
     });
@@ -27,15 +33,18 @@ export default function SuiviProfileScreen() {
     return () => unsubscribe();
   }, []);
 
-  const validateInputs = () => {
-    if (!matricule || !codeProfile || !dateDebut || !dateFin || !motpass) {
+  const validateInputs = () =>
+  {
+    if (!matricule || !codeProfile || !dateDebut || !dateFin || !motpass)
+    {
       Alert.alert("Erreur", "Tous les champs sont requis.");
       return false;
     }
 
     const matNum = parseInt(matricule);
     const codeNum = parseInt(codeProfile);
-    if (isNaN(matNum) || isNaN(codeNum)) {
+    if (isNaN(matNum) || isNaN(codeNum))
+    {
       Alert.alert("Erreur", "Matricule et code profil doivent être des entiers.");
       return false;
     }
@@ -43,7 +52,8 @@ export default function SuiviProfileScreen() {
     return true;
   };
 
-  const resetForm = () => {
+  const resetForm = () =>
+  {
     setMatricule('');
     setCodeProfile('');
     setDateDebut('');
@@ -52,23 +62,43 @@ export default function SuiviProfileScreen() {
     setModificationMode(false);
   };
 
-  const handleAddOrUpdateSuivi = async () => {
+  const handleAddOrUpdateSuivi = async () =>
+  {
     if (!validateInputs()) return;
 
     const matNum = parseInt(matricule);
     const codeNum = parseInt(codeProfile);
 
-    try {
-      // Vérifier si user existe
-      const userSnap = await get(ref(database, `users/${matNum}`));
-      if (!userSnap.exists()) {
+    try
+    {
+      // Vérifier si utilisateur avec matricule_user existe
+      const usersRef = ref(database, `users`);
+      const usersSnap = await get(usersRef);
+      let userExists = false;
+
+      if (usersSnap.exists())
+      {
+        const usersData = usersSnap.val();
+        for (const key in usersData)
+        {
+          if (parseInt(usersData[key].matricule_user) === matNum)
+          {
+            userExists = true;
+            break;
+          }
+        }
+      }
+
+      if (!userExists)
+      {
         Alert.alert("Erreur", `Aucun utilisateur avec le matricule ${matNum}`);
         return;
       }
 
-      // Vérifier si profil existe
+      // Vérifier si le profil avec ce code existe
       const profileSnap = await get(ref(database, `profiles/${codeNum}`));
-      if (!profileSnap.exists()) {
+      if (!profileSnap.exists())
+      {
         Alert.alert("Erreur", `Aucun profil avec le code ${codeNum}`);
         return;
       }
@@ -86,13 +116,15 @@ export default function SuiviProfileScreen() {
       Alert.alert("Succès", modificationMode ? "Affectation modifiée." : "Affectation ajoutée.");
       resetForm();
 
-    } catch (error) {
+    } catch (error)
+    {
       console.error("Erreur:", error);
       Alert.alert("Erreur", "Une erreur est survenue.");
     }
   };
 
-  const handleEditSuivi = (item) => {
+  const handleEditSuivi = (item) =>
+  {
     setMatricule(item.matricule.toString());
     setCodeProfile(item.code_profile.toString());
     setDateDebut(item.date_debut);
@@ -101,22 +133,23 @@ export default function SuiviProfileScreen() {
     setModificationMode(true);
   };
 
-  const handleDeleteSuivi = async (matricule, codeProfile) => {
+  const handleDeleteSuivi = async (matricule, codeProfile) =>
+  {
     Alert.alert("Confirmation", "Voulez-vous supprimer cette affectation ?", [
-      {
-        text: "Annuler",
-        style: "cancel"
-      },
+      { text: "Annuler", style: "cancel" },
       {
         text: "Supprimer",
         style: "destructive",
-        onPress: async () => {
-          try {
+        onPress: async () =>
+        {
+          try
+          {
             const id = `${matricule}_${codeProfile}`;
             const suiviRef = ref(database, `suivi_profiles/${id}`);
             await remove(suiviRef);
             Alert.alert("Succès", "Affectation supprimée.");
-          } catch (error) {
+          } catch (error)
+          {
             console.error("Erreur:", error);
             Alert.alert("Erreur", "Impossible de supprimer l'affectation.");
           }
@@ -135,22 +168,32 @@ export default function SuiviProfileScreen() {
       <TextInput style={styles.input} placeholder="Date Fin" value={dateFin} onChangeText={setDateFin} />
       <TextInput style={styles.input} placeholder="Mot de passe" value={motpass} onChangeText={setMotpass} secureTextEntry />
 
-      <Button title={modificationMode ? "Modifier Affectation" : "Ajouter Affectation"} onPress={handleAddOrUpdateSuivi} />
-      {modificationMode && <Button title="Annuler" color="grey" onPress={resetForm} />}
+      <TouchableOpacity style={styles.primaryBtn} onPress={handleAddOrUpdateSuivi}>
+        <Text style={styles.btnText}>{modificationMode ? "Modifier Affectation" : "Ajouter Affectation"}</Text>
+      </TouchableOpacity>
+
+      {modificationMode && (
+        <TouchableOpacity style={styles.cancelBtn} onPress={resetForm}>
+          <Text style={styles.btnText}>Annuler</Text>
+        </TouchableOpacity>
+      )}
 
       <FlatList
         data={suivis}
         keyExtractor={(item) => `${item.matricule}_${item.code_profile}`}
         renderItem={({ item }) => (
-          <View style={styles.item}>
-            <Text>👤 Matricule: {item.matricule}</Text>
-            <Text>🧩 Profil: {item.code_profile}</Text>
-            <Text>📅 {item.date_debut} → {item.date_fin}</Text>
-            <Text>🔐 Mot de passe: {item.motpass}</Text>
-            <View style={styles.actions}>
-              <Button title="✏️" onPress={() => handleEditSuivi(item)} />
-              <View style={{ width: 10 }} />
-              <Button title="🗑️" color="red" onPress={() => handleDeleteSuivi(item.matricule, item.code_profile)} />
+          <View style={styles.card}>
+            <Text style={styles.cardText}>👤 Matricule: {item.matricule}</Text>
+            <Text style={styles.cardText}>🧩 Profil: {item.code_profile}</Text>
+            <Text style={styles.cardText}>📅 {item.date_debut} → {item.date_fin}</Text>
+            <Text style={styles.cardText}>🔐 Mot de passe: {item.motpass}</Text>
+            <View style={styles.cardActions}>
+              <TouchableOpacity style={styles.editBtn} onPress={() => handleEditSuivi(item)}>
+                <Text style={styles.btnText}>Modifier</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDeleteSuivi(item.matricule, item.code_profile)}>
+                <Text style={styles.btnText}>Supprimer</Text>
+              </TouchableOpacity>
             </View>
           </View>
         )}
@@ -158,11 +201,3 @@ export default function SuiviProfileScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, backgroundColor: "#fff" },
-  title: { fontSize: 20, fontWeight: "bold", marginBottom: 15, textAlign: "center" },
-  input: { borderWidth: 1, borderColor: "#ccc", padding: 10, marginBottom: 10, borderRadius: 5 },
-  item: { padding: 12, backgroundColor: "#f5f5f5", borderRadius: 6, marginBottom: 10 },
-  actions: { flexDirection: "row", marginTop: 10, justifyContent: "flex-end" }
-});

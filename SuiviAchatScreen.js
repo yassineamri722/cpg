@@ -1,96 +1,48 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, TextInput, FlatList, Button, StyleSheet, TouchableOpacity, Alert } from "react-native";
+import
+  {
+    View,
+    Text,
+    TextInput,
+    FlatList,
+    TouchableOpacity,
+    Alert,
+  } from "react-native";
 import { getDatabase, ref, get } from "firebase/database";
-import { addSuiviAchat, updateSuiviAchat, deleteSuiviAchat, getSuivisAchat } from "./firebase_achat";
+import
+  {
+    addSuiviAchat,
+    updateSuiviAchat,
+    deleteSuiviAchat,
+  } from "./firebase_achat";
+import styles from "./globalStyles"; // ← your shared styles
 
-const SuiviAchatScreen = () => {
+const SuiviAchatScreen = () =>
+{
   const [suivis, setSuivis] = useState([]);
-  const [code_article, setCodeArticle] = useState("");
-  const [code_fr, setCodeFr] = useState("");
-  const [date_achat, setDateAchat] = useState("");
-  const [qte_achat, setQteAchat] = useState("");
-  const [prix_achat, setPrixAchat] = useState("");
+  const [codeArticle, setCodeArticle] = useState("");
+  const [codeFr, setCodeFr] = useState("");
+  const [dateAchat, setDateAchat] = useState("");
+  const [qteAchat, setQteAchat] = useState("");
+  const [prixAchat, setPrixAchat] = useState("");
   const [selectedId, setSelectedId] = useState(null);
 
-  const [articlesExistants, setArticlesExistants] = useState([]);
-  const [fournisseursExistants, setFournisseursExistants] = useState([]);
-
-  useEffect(() => {
+  useEffect(() =>
+  {
     const db = getDatabase();
     get(ref(db, "suivi_achat"))
-      .then((snapshot) => {
-        if (snapshot.exists()) {
-          setSuivis(Object.values(snapshot.val()));
-        } else {
-          console.log("No data available");
+      .then((snap) =>
+      {
+        if (snap.exists())
+        {
+          setSuivis(Object.values(snap.val()));
         }
       })
-      .catch((error) => {
-        console.error("Error getting data: ", error);
-      });
+      .catch((err) => console.error(err));
+  }, [suivis]);
 
-    get(ref(db, "fournisseurs"))
-      .then((snapshot) => {
-        if (snapshot.exists()) {
-          const data = snapshot.val();
-          const list = Object.values(data).map((f) => Number(f.code_fr));
-          setFournisseursExistants(list);
-        }
-      })
-      .catch((error) => {
-        console.error("Error getting suppliers: ", error);
-      });
-
-    get(ref(db, "articles"))
-      .then((snapshot) => {
-        if (snapshot.exists()) {
-          const data = snapshot.val();
-          const list = Object.values(data).map((a) => Number(a.code_article));
-          setArticlesExistants(list);
-        }
-      })
-      .catch((error) => {
-        console.error("Error getting articles: ", error);
-      });
-  }, []);
-
-  const handleAddOrUpdate = async () => {
-    if (!code_article || !code_fr || !date_achat || !qte_achat || !prix_achat) {
-      Alert.alert("Erreur", "Veuillez remplir tous les champs.");
-      return;
-    }
-
-    const artCode = Number(code_article);
-    const frCode = Number(code_fr);
-
-    if (!articlesExistants.includes(artCode)) {
-      Alert.alert("Erreur", `L'article ${artCode} n'existe pas.`);
-      return;
-    }
-
-    if (!fournisseursExistants.includes(frCode)) {
-      Alert.alert("Erreur", `Le fournisseur ${frCode} n'existe pas.`);
-      return;
-    }
-
-    const data = {
-      code_article: artCode,
-      code_fr: frCode,
-      date_achat,
-      qte_achat,
-      prix_achat,
-    };
-
-    if (selectedId) {
-      await updateSuiviAchat(selectedId, data);
-    } else {
-      await addSuiviAchat(artCode, date_achat, qte_achat, prix_achat, frCode);
-    }
-
-    clearForm();
-  };
-
-  const clearForm = () => {
+  const clearForm = () =>
+  {
     setCodeArticle("");
     setCodeFr("");
     setDateAchat("");
@@ -99,7 +51,46 @@ const SuiviAchatScreen = () => {
     setSelectedId(null);
   };
 
-  const handleSelect = (item) => {
+  const handleSave = async () =>
+  {
+    if (
+      !codeArticle ||
+      !codeFr ||
+      !dateAchat ||
+      !qteAchat ||
+      !prixAchat
+    )
+    {
+      Alert.alert("Erreur", "Tous les champs sont requis.");
+      return;
+    }
+
+    const data = {
+      code_article: Number(codeArticle),
+      code_fr: Number(codeFr),
+      date_achat: dateAchat,
+      qte_achat: Number(qteAchat),
+      prix_achat: Number(prixAchat),
+    };
+
+    try
+    {
+      if (selectedId)
+      {
+        await updateSuiviAchat(selectedId, data);
+      } else
+      {
+        await addSuiviAchat(data);
+      }
+      clearForm();
+    } catch (err)
+    {
+      Alert.alert("Erreur", err.message);
+    }
+  };
+
+  const handleSelect = (item) =>
+  {
     setCodeArticle(String(item.code_article));
     setCodeFr(String(item.code_fr));
     setDateAchat(item.date_achat);
@@ -108,63 +99,89 @@ const SuiviAchatScreen = () => {
     setSelectedId(item.id);
   };
 
-  const handleDelete = async (id) => {
-    await deleteSuiviAchat(id);
+  const handleDelete = async (id) =>
+  {
+    try
+    {
+      await deleteSuiviAchat(id);
+      clearForm();
+    } catch (err)
+    {
+      Alert.alert("Erreur", err.message);
+    }
   };
-return (
+
+  return (
     <View style={styles.container}>
       <Text style={styles.title}>📦 Suivi Achats</Text>
 
       <TextInput
-        placeholder="Code Article (int)"
-        value={code_article}
+        style={styles.input}
+        placeholder="Code Article"
+        keyboardType="numeric"
+        value={codeArticle}
         onChangeText={setCodeArticle}
-        keyboardType="numeric"
-        style={styles.input}
       />
       <TextInput
-        placeholder="Code Fournisseur (int)"
-        value={code_fr}
+        style={styles.input}
+        placeholder="Code Fournisseur"
+        keyboardType="numeric"
+        value={codeFr}
         onChangeText={setCodeFr}
-        keyboardType="numeric"
-        style={styles.input}
       />
       <TextInput
+        style={styles.input}
         placeholder="Date Achat (YYYY-MM-DD)"
-        value={date_achat}
+        value={dateAchat}
         onChangeText={setDateAchat}
-        style={styles.input}
       />
       <TextInput
-        placeholder="Quantité Achat (int)"
-        value={qte_achat}
+        style={styles.input}
+        placeholder="Quantité"
+        keyboardType="numeric"
+        value={qteAchat}
         onChangeText={setQteAchat}
-        keyboardType="numeric"
-        style={styles.input}
       />
       <TextInput
-        placeholder="Prix Achat (float)"
-        value={prix_achat}
-        onChangeText={setPrixAchat}
-        keyboardType="numeric"
         style={styles.input}
+        placeholder="Prix Achat"
+        keyboardType="numeric"
+        value={prixAchat}
+        onChangeText={setPrixAchat}
       />
 
-      <Button
-        title={selectedId ? "Modifier Suivi" : "Ajouter Suivi"}
-        onPress={handleAddOrUpdate}
-      />
+      <TouchableOpacity
+        style={styles.primaryBtn}
+        onPress={handleSave}
+      >
+        <Text style={styles.btnText}>
+          {selectedId ? "Modifier Suivi" : "Ajouter Suivi"}
+        </Text>
+      </TouchableOpacity>
 
       <FlatList
         data={suivis}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <TouchableOpacity onPress={() => handleSelect(item)}>
-            <View style={styles.item}>
-              <Text>
-                🧾 Article: {item.code_article} | 👤 Fournisseur: {item.code_fr} | 📅 {item.date_achat} | Q: {item.qte_achat} | 💵 {item.prix_achat}
+            <View style={styles.card}>
+              <Text style={styles.cardText}>
+                🧾 {item.code_article} | 👤 {item.code_fr} | 📅 {item.date_achat} | Q: {item.qte_achat} | 💵 {item.prix_achat}
               </Text>
-              <Button title="🗑️" onPress={() => handleDelete(item.id)} />
+              <View style={styles.cardActions}>
+                <TouchableOpacity
+                  style={styles.editBtn}
+                  onPress={() => handleSelect(item)}
+                >
+                  <Text style={styles.btnText}>Modifier</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.deleteBtn}
+                  onPress={() => handleDelete(item.id)}
+                >
+                  <Text style={styles.btnText}>Supprimer</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </TouchableOpacity>
         )}
@@ -172,25 +189,5 @@ return (
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, backgroundColor: "#fff" },
-  title: { fontSize: 20, fontWeight: "bold", marginBottom: 10 },
-  input: {
-    borderWidth: 1,
-    padding: 10,
-    marginBottom: 8,
-    borderRadius: 5,
-    borderColor: "#ccc",
-  },
-  item: {
-    padding: 10,
-    marginVertical: 5,
-    backgroundColor: "#f1f1f1",
-    borderRadius: 5,
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-});
 
 export default SuiviAchatScreen;

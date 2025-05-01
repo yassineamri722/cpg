@@ -1,28 +1,31 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, TextInput, Button, FlatList, Alert, StyleSheet } from "react-native";
-import { ref, set, remove, onValue } from "firebase/database";
+import { View, Text, TextInput, FlatList, Alert, TouchableOpacity } from "react-native";
+import { ref, set, remove, onValue, get } from "firebase/database";
 import { database } from "./firebaseconfig"; // Assurez-vous de configurer Firebase correctement
-import { ListItem, IconButton } from 'react-native-paper'; // Importation de Paper pour le design moderne
-
-export default function SiegeScreen() {
+import { IconButton } from 'react-native-paper'; // Correct import for 'IconButton'
+import styles from './globalStyles'; // Corrected import for global styles
+import { Picker } from '@react-native-picker/picker';
+export default function SiegeScreen()
+{
   const [sieges, setSieges] = useState([]);
   const [siegeId, setSiegeId] = useState('');
   const [siegeNom, setSiegeNom] = useState('');
   const [disponibilite, setDisponibilite] = useState('');
-  const [prix, setPrix] = useState('');
   const [editing, setEditing] = useState(null);
 
-
-  
-  useEffect(() => {
+  useEffect(() =>
+  {
     // Récupérer les données depuis Firebase
     const dbRef = ref(database, 'sieges');
-    const unsubscribe = onValue(dbRef, snapshot => {
+    const unsubscribe = onValue(dbRef, snapshot =>
+    {
       const data = snapshot.val();
-      if (data) {
+      if (data)
+      {
         const list = Object.values(data);
         setSieges(list);
-      } else {
+      } else
+      {
         setSieges([]);
       }
     });
@@ -31,8 +34,10 @@ export default function SiegeScreen() {
   }, []);
 
   // Enregistrer ou modifier un siège
-  const handleSave = () => {
-    if (!siegeId || !siegeNom || !disponibilite || !prix) {
+  const handleSave = () =>
+  {
+    if (!siegeId || !siegeNom || !disponibilite)
+    {
       Alert.alert("Champs requis", "Veuillez remplir tous les champs.");
       return;
     }
@@ -42,9 +47,9 @@ export default function SiegeScreen() {
       id: siegeId.trim(),
       nom: siegeNom.trim(),
       disponibilite: disponibilite.trim(),
-      prix: prix.trim(),
     })
-      .then(() => {
+      .then(() =>
+      {
         Alert.alert("Succès", editing ? "Siège modifié." : "Siège ajouté.");
         resetForm();
       })
@@ -52,38 +57,79 @@ export default function SiegeScreen() {
   };
 
   // Fonction pour éditer un siège
-  const handleEdit = (item) => {
+  const handleEdit = (item) =>
+  {
     setSiegeId(item.id);
     setSiegeNom(item.nom);
     setDisponibilite(item.disponibilite);
-    setPrix(item.prix);
     setEditing(item.id);
   };
 
   // Fonction pour supprimer un siège
-  const handleDelete = (id) => {
-    Alert.alert("Confirmation", "Supprimer ce siège ?", [
-      { text: "Annuler", style: "cancel" },
+  const handleDelete = async (id) =>
+  {
+    try
+    {
+      // Reference to "suivi_produits" in the database
+      const suiviProduitsRef = ref(database, 'suivi_produits');
+
+      // Query to check if there are any suivi_produits with the given siege id (codeSiege)
+      const snapshot = await get(suiviProduitsRef);
+      const data = snapshot.val();
+
+      let siegeHasSuiviProduit = false;
+
+      // Check if any suivi_produits has the current siege id
+      if (data)
       {
-        text: "Supprimer", style: "destructive",
-        onPress: () => {
-          const siegeRef = ref(database, `sieges/${id}`);
-          remove(siegeRef)
-            .then(() => Alert.alert("Siège supprimé"))
-            .catch(err => console.error("Erreur suppression :", err));
-        }
+        Object.entries(data).forEach(([key, value]) =>
+        {
+          if (value.codeSiege === id)
+          {
+            siegeHasSuiviProduit = true;
+          }
+        });
       }
-    ]);
+
+      if (siegeHasSuiviProduit)
+      {
+        // If there are associated suivi_produits, alert the user and do not delete
+        Alert.alert("Impossible de supprimer", "Il existe des suivis produits associés à ce siège.");
+      } else
+      {
+        // If no associated suivi_produits, proceed with deletion
+        Alert.alert("Confirmation", "Supprimer ce siège ?", [
+          { text: "Annuler", style: "cancel" },
+          {
+            text: "Supprimer", style: "destructive",
+            onPress: () =>
+            {
+              const siegeRef = ref(database, `sieges/${id}`);
+              remove(siegeRef)
+                .then(() => Alert.alert("Siège supprimé"))
+                .catch(err => console.error("Erreur suppression :", err));
+            }
+          }
+        ]);
+      }
+    } catch (err)
+    {
+      console.error("Erreur lors de la vérification des suivis produits:", err);
+      Alert.alert("Erreur", "Impossible de vérifier les suivis produits associés.");
+    }
   };
 
   // Réinitialiser le formulaire après ajout ou modification
-  const resetForm = () => {
+  const resetForm = () =>
+  {
     setSiegeId('');
     setSiegeNom('');
     setDisponibilite('');
-    setPrix('');
     setEditing(null);
   };
+
+  // Helper function to safely handle undefined values
+  const getSafeValue = (value) => value || "Non défini"; // Default to "Non défini" if value is undefined or null
 
   return (
     <View style={styles.container}>
@@ -108,41 +154,32 @@ export default function SiegeScreen() {
         value={disponibilite}
         onChangeText={setDisponibilite}
       />
-      <TextInput
-        style={styles.input}
-        placeholder="Prix"
-        value={prix}
-        onChangeText={setPrix}
-      />
 
-      <Button title={editing ? "Modifier" : "Ajouter"} onPress={handleSave} />
-      {editing && <Button title="Annuler" color="gray" onPress={resetForm} />}
+      {/* Custom "Ajouter" button */}
+      <TouchableOpacity style={styles.primaryBtn} onPress={handleSave}>
+        <Text style={styles.btnText}>{editing ? "Modifier" : "Ajouter"}</Text>
+      </TouchableOpacity>
+
+      {editing && (
+        <TouchableOpacity style={styles.cancelBtn} onPress={resetForm}>
+          <Text style={styles.btnText}>Annuler</Text>
+        </TouchableOpacity>
+      )}
 
       {/* Liste des sièges */}
       <FlatList
         data={sieges}
         keyExtractor={item => item.id || Math.random().toString(36).substr(2, 9)}
         renderItem={({ item }) => (
-          <ListItem
-            title={`${item.nom} - ${item.disponibilite}`}
-            description={`Prix: ${item.prix}`}
-            left={props => <ListItem.Icon {...props} icon="seat" />}
-            right={props => (
-              <>
-                <IconButton icon="pencil" onPress={() => handleEdit(item)} />
-                <IconButton icon="delete" onPress={() => handleDelete(item.id)} color="red" />
-              </>
-            )}
-          />
+          <View style={styles.card}>
+            <Text style={styles.cardText}>{`${getSafeValue(item.nom)} - ${getSafeValue(item.disponibilite)}`}</Text>
+            <View style={styles.cardActions}>
+              <IconButton icon="pencil" onPress={() => handleEdit(item)} />
+              <IconButton icon="delete" onPress={() => handleDelete(item.id)} color="red" />
+            </View>
+          </View>
         )}
       />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, backgroundColor: "#fff" },
-  title: { fontSize: 22, fontWeight: "bold", marginBottom: 20, textAlign: "center" },
-  input: { borderWidth: 1, borderColor: "#ccc", borderRadius: 8, padding: 10, marginBottom: 10 },
-  item: { padding: 10, borderWidth: 1, borderColor: "#ddd", borderRadius: 8, marginTop: 15 },
-});

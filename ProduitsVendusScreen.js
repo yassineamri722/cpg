@@ -1,114 +1,126 @@
 import React, { useState, useEffect } from "react";
-import {
+import
+{
   View,
   Text,
   TextInput,
-  Button,
-  StyleSheet,
   FlatList,
   Alert,
+  TouchableOpacity,
 } from "react-native";
 import { getDatabase, ref, get, set, remove } from "firebase/database";
+import styles from "./globalStyles"; // Remplace par le bon chemin
 
 const database = getDatabase();
 
-function ProduitsVendusScreen() {
+function ProduitsVendusScreen()
+{
   const [codeProduit, setCodeProduit] = useState("");
   const [libelleProduit, setLibelleProduit] = useState("");
   const [produits, setProduits] = useState([]);
   const [editingCode, setEditingCode] = useState(null);
 
-  useEffect(() => {
-    const produitsVendusRef = ref(database, 'produitsvendus'); // Changed here
-    get(produitsVendusRef).then(snapshot => {
-      const data = snapshot.val();
-      if (data) {
-        setProduits(Object.values(data));
-      }
-    }).catch(error => {
-      console.error("Erreur de récupération des produits:", error);
-    });
+  useEffect(() =>
+  {
+    updateListeProduits();
   }, []);
 
-  const resetForm = () => {
+  const resetForm = () =>
+  {
     setCodeProduit("");
     setLibelleProduit("");
     setEditingCode(null);
   };
 
-  const ajouterOuModifierProduit = () => {
-    if (!codeProduit || !libelleProduit) {
+  const ajouterOuModifierProduit = () =>
+  {
+    if (!codeProduit || !libelleProduit)
+    {
       Alert.alert("Erreur", "Veuillez remplir tous les champs");
       return;
     }
 
-    const produitVendusRef = ref(database, `produitsvendus/${codeProduit}`); // Changed here
+    const produitRef = ref(database, `produitsvendus/${codeProduit}`);
 
-    if (editingCode) {
+    if (editingCode)
+    {
       // Modification
-      set(produitVendusRef, {
+      set(produitRef, {
         code: codeProduit,
         libelle: libelleProduit,
-      }).then(() => {
+      }).then(() =>
+      {
         updateListeProduits();
         resetForm();
       });
-    } else {
+    } else
+    {
       // Vérifier si le code existe déjà
       const exists = produits.find((p) => p.code === codeProduit);
-      if (exists) {
+      if (exists)
+      {
         Alert.alert("Erreur", "Code produit déjà existant");
         return;
       }
 
       // Ajout
-      set(produitVendusRef, {
+      set(produitRef, {
         code: codeProduit,
         libelle: libelleProduit,
-      }).then(() => {
+      }).then(() =>
+      {
         updateListeProduits();
         resetForm();
       });
     }
   };
 
-  const supprimerProduit = (code) => {
-    Alert.alert(
-      "Confirmation",
-      "Voulez-vous vraiment supprimer ce produit ?",
-      [
-        { text: "Annuler", style: "cancel" },
+  const supprimerProduit = (code) =>
+  {
+    Alert.alert("Confirmation", "Voulez-vous vraiment supprimer ce produit ?", [
+      { text: "Annuler", style: "cancel" },
+      {
+        text: "Supprimer",
+        style: "destructive",
+        onPress: () =>
         {
-          text: "Supprimer",
-          style: "destructive",
-          onPress: () => {
-            const produitVendusRef = ref(database, `produitsvendus/${code}`); // Changed here
-            remove(produitVendusRef).then(() => {
-              updateListeProduits();
-              if (editingCode === code) resetForm();
-            });
-          },
+          const produitRef = ref(database, `produitsvendus/${code}`);
+          remove(produitRef).then(() =>
+          {
+            updateListeProduits();
+            if (editingCode === code) resetForm();
+          });
         },
-      ]
-    );
+      },
+    ]);
   };
 
-  const commencerEdition = (produit) => {
+  const commencerEdition = (produit) =>
+  {
     setCodeProduit(produit.code);
     setLibelleProduit(produit.libelle);
     setEditingCode(produit.code);
   };
 
-  const updateListeProduits = () => {
-    const produitsVendusRef = ref(database, 'produitsvendus'); // Changed here
-    get(produitsVendusRef).then(snapshot => {
-      const data = snapshot.val();
-      if (data) {
-        setProduits(Object.values(data));
-      } else {
-        setProduits([]);
-      }
-    });
+  const updateListeProduits = () =>
+  {
+    const produitsRef = ref(database, "produitsvendus");
+    get(produitsRef)
+      .then((snapshot) =>
+      {
+        const data = snapshot.val();
+        if (data)
+        {
+          setProduits(Object.values(data));
+        } else
+        {
+          setProduits([]);
+        }
+      })
+      .catch((error) =>
+      {
+        console.error("Erreur de récupération des produits:", error);
+      });
   };
 
   return (
@@ -129,83 +141,50 @@ function ProduitsVendusScreen() {
         onChangeText={setLibelleProduit}
       />
 
-      <Button
-        title={editingCode ? "Mettre à jour le produit" : "Ajouter Produit"}
-        onPress={ajouterOuModifierProduit}
-      />
+      <TouchableOpacity style={styles.primaryBtn} onPress={ajouterOuModifierProduit}>
+        <Text style={styles.btnText}>
+          {editingCode ? "Mettre à jour le produit" : "Ajouter Produit"}
+        </Text>
+      </TouchableOpacity>
 
       {editingCode && (
-        <View style={{ marginTop: 10 }}>
-          <Button title="Annuler la modification" onPress={resetForm} color="gray" />
-        </View>
+        <TouchableOpacity style={styles.cancelBtn} onPress={resetForm}>
+          <Text style={styles.btnText}>Annuler la modification</Text>
+        </TouchableOpacity>
       )}
 
       <FlatList
         data={produits}
         keyExtractor={(item) => item.code}
         renderItem={({ item }) => (
-          <View style={styles.produitItem}>
-            <Text style={styles.produitText}>
+          <View style={styles.card}>
+            <Text style={styles.cardText}>
               {item.code} - {item.libelle}
             </Text>
-            <View style={styles.buttonRow}>
-              <Button title="Modifier" onPress={() => commencerEdition(item)} />
-              <View style={{ width: 10 }} />
-              <Button
-                title="Supprimer"
+            <View style={styles.cardActions}>
+              <TouchableOpacity
+                style={styles.editBtn}
+                onPress={() => commencerEdition(item)}
+              >
+                <Text style={styles.btnText}>Modifier</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.deleteBtn}
                 onPress={() => supprimerProduit(item.code)}
-                color="red"
-              />
+              >
+                <Text style={styles.btnText}>Supprimer</Text>
+              </TouchableOpacity>
             </View>
           </View>
         )}
         ListEmptyComponent={
-          <Text style={styles.empty}>Aucun produit ajouté</Text>
+          <Text style={styles.emptyText || { textAlign: "center", marginTop: 20, fontStyle: "italic", color: "#6B7280" }}>
+            Aucun produit ajouté
+          </Text>
         }
       />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f2f2f2",
-    padding: 20,
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: "bold",
-    marginBottom: 20,
-    textAlign: "center",
-    color: "#333",
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "#aaa",
-    padding: 10,
-    marginBottom: 10,
-    borderRadius: 5,
-    backgroundColor: "#fff",
-  },
-  produitItem: {
-    backgroundColor: "#e0e0e0",
-    padding: 15,
-    marginVertical: 8,
-    borderRadius: 5,
-  },
-  produitText: {
-    fontSize: 16,
-  },
-  buttonRow: {
-    flexDirection: "row",
-    marginTop: 10,
-  },
-  empty: {
-    textAlign: "center",
-    marginTop: 20,
-    color: "#777",
-  },
-});
 
 export default ProduitsVendusScreen;

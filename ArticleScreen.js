@@ -1,70 +1,71 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, TextInput, Button, FlatList, TouchableOpacity, StyleSheet, Alert } from "react-native";
-import { getDatabase, ref, set, get, child, remove } from "firebase/database";
+import { View, Text, TextInput, FlatList, TouchableOpacity, Alert, Text as RNText } from "react-native";
+import { getDatabase, ref, set, get, remove } from "firebase/database";
+import styles from "./globalStyles"; // adjust path if needed
 
-// Initialize Firebase Realtime Database
 const database = getDatabase();
 
-const ArticleScreen = () => {
+const ArticleScreen = () =>
+{
   const [articles, setArticles] = useState([]);
   const [code, setCode] = useState("");
   const [libelle, setLibelle] = useState("");
   const [selectedCode, setSelectedCode] = useState(null);
 
-  // Fetch articles from Firebase Realtime Database
-  useEffect(() => {
+  useEffect(() =>
+  {
     fetchArticles();
   }, []);
 
-  const fetchArticles = async () => {
-    const articlesRef = ref(database, "articles");
-    try {
-      const snapshot = await get(articlesRef);
-      if (snapshot.exists()) {
+  const fetchArticles = async () =>
+  {
+    try
+    {
+      const snapshot = await get(ref(database, "articles"));
+      if (snapshot.exists())
+      {
         const data = snapshot.val();
-        const articleList = Object.keys(data).map(key => ({
+        const articleList = Object.keys(data).map((key) => ({
           code_article: key,
           lib_article: data[key].lib_article,
         }));
         setArticles(articleList);
       }
-    } catch (error) {
+    } catch (error)
+    {
       Alert.alert("Erreur", "Problème lors de la récupération des articles.");
     }
   };
 
-  const handleAddOrUpdate = async () => {
+  const handleAddOrUpdate = async () =>
+  {
     if (!code || !libelle) return;
 
-    try {
-      if (selectedCode) {
-        // Update article
-        await set(ref(database, "articles/" + selectedCode), {
-          lib_article: libelle,
-        });
-      } else {
-        // Add new article
-        await set(ref(database, "articles/" + code), {
-          lib_article: libelle,
-        });
-      }
+    try
+    {
+      await set(ref(database, "articles/" + code), {
+        lib_article: libelle,
+      });
 
       setCode("");
       setLibelle("");
       setSelectedCode(null);
-      fetchArticles(); // Refresh article list
-    } catch (error) {
+      fetchArticles();
+    } catch (error)
+    {
       Alert.alert("Erreur", "Problème lors de l'ajout ou modification de l'article.");
     }
   };
 
-  const handleDelete = async (code_article) => {
-    try {
-      // Remove article from Firebase
+  const handleDelete = async (code_article) =>
+  {
+    try
+    {
       await remove(ref(database, "articles/" + code_article));
-      fetchArticles(); // Refresh article list
+      fetchArticles();
       Alert.alert("Succès", "Article supprimé.");
-    } catch (error) {
+    } catch (error)
+    {
       Alert.alert("Erreur", "Problème lors de la suppression de l'article.");
     }
   };
@@ -72,6 +73,7 @@ const ArticleScreen = () => {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Gestion des Articles</Text>
+
       <TextInput
         placeholder="Code Article"
         value={code}
@@ -84,66 +86,53 @@ const ArticleScreen = () => {
         onChangeText={setLibelle}
         style={styles.input}
       />
-      <View style={styles.buttonContainer}>
-        <Button title="Ajouter" onPress={handleAddOrUpdate} />
-        {selectedCode && (
-          <Button
-            title="Modifier"
-            onPress={handleAddOrUpdate}
-          />
-        )}
-      </View>
+
+      <TouchableOpacity style={styles.primaryBtn} onPress={handleAddOrUpdate}>
+        <Text style={styles.btnText}>{selectedCode ? "Modifier" : "Ajouter"}</Text>
+      </TouchableOpacity>
+
+      {selectedCode && (
+        <TouchableOpacity style={styles.cancelBtn} onPress={() =>
+        {
+          setCode("");
+          setLibelle("");
+          setSelectedCode(null);
+        }}>
+          <Text style={styles.btnText}>Annuler</Text>
+        </TouchableOpacity>
+      )}
 
       <FlatList
         data={articles}
         keyExtractor={(item) => item.code_article}
         renderItem={({ item }) => (
-          <TouchableOpacity
-            onPress={() => {
-              setCode(item.code_article);
-              setLibelle(item.lib_article);
-              setSelectedCode(item.code_article);
-            }}
-          >
-            <View style={styles.item}>
-              <Text>{item.code_article} - {item.lib_article}</Text>
-              <View style={styles.itemButtons}>
-                <Button
-                  title="Supprimer"
-                  color="#d9534f"
-                  onPress={() => handleDelete(item.code_article)}
-                />
-              </View>
+          <View style={styles.card}>
+            <Text style={styles.cardText}>{item.code_article} - {item.lib_article}</Text>
+            <View style={styles.cardActions}>
+              <TouchableOpacity
+                style={styles.editBtn}
+                onPress={() =>
+                {
+                  setCode(item.code_article);
+                  setLibelle(item.lib_article);
+                  setSelectedCode(item.code_article);
+                }}
+              >
+                <Text style={styles.btnText}>Modifier</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.deleteBtn}
+                onPress={() => handleDelete(item.code_article)}
+              >
+                <Text style={styles.btnText}>Supprimer</Text>
+              </TouchableOpacity>
             </View>
-          </TouchableOpacity>
+          </View>
         )}
       />
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, backgroundColor: "#f9f9f9" },
-  title: { fontSize: 22, fontWeight: "bold", marginBottom: 15 },
-  input: { borderWidth: 1, padding: 10, marginBottom: 10, borderRadius: 5 },
-  buttonContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 15,
-  },
-  item: {
-    padding: 10,
-    backgroundColor: "#fff",
-    borderRadius: 5,
-    marginBottom: 10,
-    borderColor: "#ccc",
-    borderWidth: 1,
-  },
-  itemButtons: {
-    marginTop: 10,
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-});
 
 export default ArticleScreen;

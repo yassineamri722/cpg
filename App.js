@@ -32,12 +32,17 @@ import SuiviProfileScreen from "./SuiviProfileScreen";
 //audit
 import TypeAuditScreen from "./TypeAuditScreen";
 import SuiviAuditScreen from "./SuiviAuditScreen";
+import UserProfileScreen from "./EmployeDashboard";
+import LogoutButton from "./LogoutButton";
+
+
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
 // Onglets Produits
-function ProduitsTabs() {
+function ProduitsTabs()
+{
   return (
     <Tab.Navigator>
       <Tab.Screen name="Produits" component={ProductsScreen} options={{ title: "Produits" }} />
@@ -48,7 +53,8 @@ function ProduitsTabs() {
 }
 
 // Onglets Candidats
-function CandidatsTabs() {
+function CandidatsTabs()
+{
   return (
     <Tab.Navigator>
       <Tab.Screen name="Users" component={UserScreen} options={{ title: "Employés" }} />
@@ -59,7 +65,8 @@ function CandidatsTabs() {
 }
 
 // Onglets Ventes
-function VentesTabs() {
+function VentesTabs()
+{
   return (
     <Tab.Navigator>
       <Tab.Screen name="Client" component={ClientScreen} options={{ title: "Clients" }} />
@@ -68,17 +75,20 @@ function VentesTabs() {
     </Tab.Navigator>
   );
 }
-function AuditTabs() {
+function AuditTabs()
+{
   return (
     <Tab.Navigator>
-      <Tab.Screen name="Sièges" component={SiegeScreen} options={{ title: "Siège" }}  />
+
       <Tab.Screen name="TypeAudit" component={TypeAuditScreen} options={{ title: "Types Audit" }} />
       <Tab.Screen name="SuiviAudit" component={SuiviAuditScreen} options={{ title: "Suivi Audit" }} />
+      <Tab.Screen name="Siege" component={SiegeScreen} options={{ title: "Sièges" }} />
     </Tab.Navigator>
   );
 }
 // Onglets Achats
-function AchatsTabs() {
+function AchatsTabs()
+{
   return (
     <Tab.Navigator>
       <Tab.Screen name="Article" component={ArticleScreen} options={{ title: "Articles" }} />
@@ -89,7 +99,8 @@ function AchatsTabs() {
 }
 
 // App principale
-export default function App() {
+export default function App()
+{
   return (
     <NavigationContainer>
       <Stack.Navigator initialRouteName="Login">
@@ -107,24 +118,18 @@ export default function App() {
         {/* Onglets Candidats */}
         <Stack.Screen name="CandidatsTabs" component={CandidatsTabs} options={{ title: "Candidats" }} />
 
+
         {/* Onglets Ventes */}
         <Stack.Screen name="VentesTabs" component={VentesTabs} options={{ title: "Ventes" }} />
 
         {/* Onglets Achats */}
         <Stack.Screen name="AchatsTabs" component={AchatsTabs} options={{ title: "Achats" }} />
         {/* Onglets Audit */}
-        <Stack.Screen name="AuditTabs" component={AuditTabs} options={{ title: "Audit" }} />
+        < Stack.Screen name="AuditTabs" component={AuditTabs} options={{ title: "Audit" }} />
+        < Stack.Screen name="userprofile" component={UserProfileScreen} options={{ title: "userprofile" }} />
+        < Stack.Screen name="logout" component={LogoutButton} options={{ title: "logout" }} />
+        <Tab.Screen name="Siege" component={SiegeScreen} options={{ title: "Sièges" }} />
 
-        {/* Produits */}
-        <Stack.Screen name="Produits" component={ProductsScreen} />
-        <Stack.Screen name="Siege" component={SiegeScreen} />
-        <Stack.Screen name="SuiviProductScreen" component={SuiviProductScreen} />
-
-        {/* Achats */}
-        <Stack.Screen name="Article acheté" component={ArticleScreen} />
-        <Stack.Screen name="Fournisseur" component={FournisseurScreen} />
-        <Stack.Screen name="SuiviAchat" component={SuiviAchatScreen} />
-        
       </Stack.Navigator>
     </NavigationContainer>
   );

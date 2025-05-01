@@ -1,99 +1,90 @@
-import React from "react";
-import { View, Text, StyleSheet, Button, ImageBackground } from "react-native";
-import { useNavigation } from "@react-navigation/native";
+import React, { useLayoutEffect } from "react";
+import
+    {
+        View,
+        Text,
+        ImageBackground,
+    } from "react-native";
+import { useNavigation, useRoute } from "@react-navigation/native";
+import { Button as PaperButton } from "react-native-paper";
+import { LinearGradient } from 'expo-linear-gradient';
+import LogoutButton from "./LogoutButton";
+import styles from "./HomeScreenStyles";
 
-const image = require('./assets/شركة-فسفاط-قفصة.jpg');
+const image = require("./assets/شركة-فسفاط-قفصة.jpg");
 
 function HomeScreen()
 {
     const navigation = useNavigation();
+    const route = useRoute();
+    const { role } = route.params || {};
+
+    // Add logout button in header
+    useLayoutEffect(() =>
+    {
+        navigation.setOptions({
+            headerRight: () => <LogoutButton />,
+            headerStyle: { backgroundColor: "#3f51b5" },
+            headerTintColor: "#fff",
+            headerTitleStyle: { fontWeight: "bold" },
+        });
+    }, [navigation]);
+
+    // Redirect employees directly
+    if (role === "employee")
+    {
+        navigation.navigate("DashboardEmployee");
+    }
 
     return (
         <ImageBackground source={image} style={styles.image}>
-            <View style={styles.container}>
-                <Text style={styles.title}>Welcome to the Home Screen</Text>
-
-                <View style={styles.card}>
-                    <Text style={styles.cardText}>
-                        Manage your candidates, products, and sales here!
+            <LinearGradient
+                colors={["rgba(0,0,0,0.4)", "rgba(0,0,0,0.6)"]}
+                style={styles.gradientOverlay}
+            >
+                <View style={styles.container}>
+                    <Text style={styles.title}>
+                        Bienvenue {role === "admin" ? "Admin" : "Employé"} !
                     </Text>
-                </View>
 
-                {/* Navigation Buttons Container */}
-                <View style={styles.buttonContainer}>
-                    <View style={styles.buttonWrapper}>
-                        <Button title="Produits" onPress={() => navigation.navigate("ProduitsTabs")} />
+                    <View style={styles.card}>
+                        <Text style={styles.cardText}>
+                            {role === "admin"
+                                ? "Gérez vos candidats, produits, ventes et audits ici !"
+                                : "Gérez votre profil candidat ici !"}
+                        </Text>
                     </View>
-                    <View style={styles.buttonWrapper}>
-                        <Button title="Ventes" onPress={() => navigation.navigate("VentesTabs")} />
-                    </View>
-                    <View style={styles.buttonWrapper}>
-                        <Button title="Achats" onPress={() => navigation.navigate("AchatsTabs")} />
-                    </View>
-                    <View style={styles.buttonWrapper}>
-                        <Button title="Candidats" onPress={() => navigation.navigate("CandidatsTabs")} />
-                    </View>
-                    {/* ✅ Ajout du bouton Audit */}
-                    <View style={styles.buttonWrapper}>
-                        <Button title="Audit" onPress={() => navigation.navigate("AuditTabs")} />
+
+                    <View style={styles.buttonContainer}>
+                        {role === "admin" && (
+                            <>
+                                {["ProduitsTabs", "VentesTabs", "AchatsTabs", "AuditTabs", "CandidatsTabs"].map((screen, index) => (
+                                    <PaperButton
+                                        key={index}
+                                        mode="contained"
+                                        style={styles.styledButton}
+                                        onPress={() => navigation.navigate(screen)}
+                                    >
+                                        {screen.replace("Tabs", "")}
+                                    </PaperButton>
+                                ))}
+                            </>
+                        )}
+
+                        {role === "employee" && (
+                            <PaperButton
+                                mode="contained"
+                                style={styles.styledButton}
+                                onPress={() => navigation.navigate("userprofile")}
+                            >
+                                Accéder au Dashboard
+                            </PaperButton>
+                        )}
                     </View>
                 </View>
-            </View>
+            </LinearGradient>
         </ImageBackground>
     );
 }
-
-const styles = StyleSheet.create({
-    image: {
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-    },
-    container: {
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-        backgroundColor: "rgba(242, 242, 242, 0.8)",
-        padding: 20,
-        borderRadius: 10,
-    },
-    title: {
-        fontSize: 28,
-        fontWeight: "bold",
-        color: "#333",
-        marginBottom: 20,
-        textAlign: "center",
-    },
-    card: {
-        backgroundColor: "#fff",
-        borderRadius: 10,
-        padding: 20,
-        marginBottom: 30,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-        elevation: 5,
-        width: "90%",
-        maxWidth: 400,
-        alignItems: "center",
-    },
-    cardText: {
-        fontSize: 18,
-        color: "#555",
-        textAlign: "center",
-    },
-    buttonContainer: {
-        width: "100%",
-        maxWidth: 400,
-        alignItems: "center",
-    },
-    buttonWrapper: {
-        width: "100%",
-        marginVertical: 8,
-        borderRadius: 8,
-        overflow: "hidden",
-    },
-});
 
 export default HomeScreen;

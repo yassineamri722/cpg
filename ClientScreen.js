@@ -1,18 +1,20 @@
 import React, { useState, useEffect } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  Button,
-  StyleSheet,
-  FlatList,
-  Alert,
-} from "react-native";
+import
+  {
+    View,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    FlatList,
+    Alert,
+  } from "react-native";
 import { getDatabase, ref, get, set, remove } from "firebase/database";
+import styles from "./globalStyles"; // ← Adjust the path
 
 const database = getDatabase();
 
-function ClientScreen() {
+function ClientScreen()
+{
   const [codeClient, setCodeClient] = useState("");
   const [nomClient, setNomClient] = useState("");
   const [telClient, setTelClient] = useState("");
@@ -20,27 +22,34 @@ function ClientScreen() {
   const [clients, setClients] = useState([]);
   const [editingCode, setEditingCode] = useState(null);
 
-  useEffect(() => {
+  useEffect(() =>
+  {
     fetchClients();
   }, []);
 
-  const fetchClients = () => {
+  const fetchClients = () =>
+  {
     const clientsRef = ref(database, "clients");
     get(clientsRef)
-      .then((snapshot) => {
+      .then((snapshot) =>
+      {
         const data = snapshot.val();
-        if (data) {
+        if (data)
+        {
           setClients(Object.values(data));
-        } else {
+        } else
+        {
           setClients([]);
         }
       })
-      .catch((error) => {
+      .catch((error) =>
+      {
         console.error("Erreur récupération clients :", error);
       });
   };
 
-  const resetForm = () => {
+  const resetForm = () =>
+  {
     setCodeClient("");
     setNomClient("");
     setTelClient("");
@@ -48,8 +57,10 @@ function ClientScreen() {
     setEditingCode(null);
   };
 
-  const ajouterOuModifierClient = () => {
-    if (!codeClient || !nomClient || !telClient || !adresseClient) {
+  const ajouterOuModifierClient = () =>
+  {
+    if (!codeClient || !nomClient || !telClient || !adresseClient)
+    {
       Alert.alert("Erreur", "Veuillez remplir tous les champs");
       return;
     }
@@ -64,16 +75,19 @@ function ClientScreen() {
     const clientRef = ref(database, `clients/${codeClient}`);
 
     set(clientRef, clientData)
-      .then(() => {
+      .then(() =>
+      {
         fetchClients();
         resetForm();
       })
-      .catch((error) => {
+      .catch((error) =>
+      {
         console.error("Erreur lors de l'enregistrement :", error);
       });
   };
 
-  const supprimerClient = (code) => {
+  const supprimerClient = (code) =>
+  {
     Alert.alert(
       "Confirmation",
       "Êtes-vous sûr de vouloir supprimer ce client ?",
@@ -82,10 +96,12 @@ function ClientScreen() {
         {
           text: "Supprimer",
           style: "destructive",
-          onPress: () => {
+          onPress: () =>
+          {
             const clientRef = ref(database, `clients/${code}`);
             remove(clientRef)
-              .then(() => {
+              .then(() =>
+              {
                 fetchClients();
                 if (editingCode === code) resetForm();
               })
@@ -98,13 +114,15 @@ function ClientScreen() {
     );
   };
 
-  const commencerEdition = (client) => {
+  const commencerEdition = (client) =>
+  {
     setCodeClient(client.code);
     setNomClient(client.nom);
     setTelClient(client.tel);
     setAdresseClient(client.adresse);
     setEditingCode(client.code);
   };
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Gestion des Clients</Text>
@@ -136,74 +154,54 @@ function ClientScreen() {
         onChangeText={setAdresseClient}
       />
 
-      <Button
-        title={editingCode ? "Mettre à jour le client" : "Ajouter Client"}
+      <TouchableOpacity
+        style={styles.primaryBtn}
         onPress={ajouterOuModifierClient}
-      />
+      >
+        <Text style={styles.btnText}>
+          {editingCode ? "Mettre à jour le client" : "Ajouter Client"}
+        </Text>
+      </TouchableOpacity>
 
       {editingCode && (
-        <View style={{ marginTop: 10 }}>
-          <Button title="Annuler la modification" onPress={resetForm} color="gray" />
-        </View>
+        <TouchableOpacity style={styles.cancelBtn} onPress={resetForm}>
+          <Text style={styles.btnText}>Annuler la modification</Text>
+        </TouchableOpacity>
       )}
 
       <FlatList
         data={clients}
         keyExtractor={(item) => item.code}
         renderItem={({ item }) => (
-          <View style={styles.clientItem}>
-            <Text style={styles.clientText}>
+          <View style={styles.card}>
+            <Text style={styles.cardText}>
               {item.code} - {item.nom} - {item.tel}
             </Text>
-            <Text style={styles.clientText}>Adresse : {item.adresse}</Text>
-            <View style={styles.buttonRow}>
-              <Button title="Modifier" onPress={() => commencerEdition(item)} />
-              <View style={{ width: 10 }} />
-              <Button
-                title="Supprimer"
+            <Text style={styles.cardText}>Adresse : {item.adresse}</Text>
+            <View style={styles.cardActions}>
+              <TouchableOpacity
+                style={styles.editBtn}
+                onPress={() => commencerEdition(item)}
+              >
+                <Text style={styles.btnText}>Modifier</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.deleteBtn}
                 onPress={() => supprimerClient(item.code)}
-                color="red"
-              />
+              >
+                <Text style={styles.btnText}>Supprimer</Text>
+              </TouchableOpacity>
             </View>
           </View>
         )}
-        ListEmptyComponent={<Text style={styles.empty}>Aucun client ajouté</Text>}
+        ListEmptyComponent={
+          <Text style={[styles.cardText, { marginTop: 20 }]}>
+            Aucun client ajouté
+          </Text>
+        }
       />
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,padding: 20,backgroundColor: "#fff",
-  },
-  title: {
-    fontSize: 26,fontWeight: "bold",marginBottom: 20,textAlign: "center",
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "#aaa",
-    padding: 10,
-    marginBottom: 10,
-    borderRadius: 5,
-  },
-  clientItem: {
-    backgroundColor: "#f0f0f0",
-    padding: 15,
-    marginVertical: 8,
-    borderRadius: 5,
-  },
-  clientText: {
-    fontSize: 16,
-  },
-  buttonRow: {
-    flexDirection: "row",
-    justifyContent: "flex-start",
-    marginTop: 10,
-  },
-  empty: {
-    textAlign: "center",
-    marginTop: 20,
-    color: "#999",
-  },
-});export default ClientScreen;
+export default ClientScreen;

@@ -1,22 +1,46 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, TextInput, Button, FlatList, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from "react-native";
-import { getFournisseurs, addFournisseur, updateFournisseur, deleteFournisseur } from "./firebase_achat";
-import { getFirestore, collection, query, where, getDocs } from "firebase/firestore";
+import
+  {
+    View,
+    Text,
+    TextInput,
+    FlatList,
+    TouchableOpacity,
+    Alert,
+    ActivityIndicator,
+    Button,
+  } from "react-native";
+import
+  {
+    getFournisseurs,
+    addFournisseur,
+    updateFournisseur,
+    deleteFournisseur,
+  } from "./firebase_achat";
+import
+  {
+    getFirestore,
+    collection,
+    query,
+    where,
+    getDocs,
+  } from "firebase/firestore";
+import globalStyles from "./globalStyles";
 
 const firestore = getFirestore();
 
-// Fonction pour récupérer les suivis achats liés à un fournisseur
-const getSuiviAchatByFournisseur = async (code_fr) => {
+const getSuiviAchatByFournisseur = async (code_fr) =>
+{
   const q = query(
     collection(firestore, "suivi_achat"),
     where("code_fr", "==", code_fr)
   );
-
   const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map((doc) => doc.data());
 };
 
-const FournisseurScreen = ({ navigation }) => {
+const FournisseurScreen = ({ navigation }) =>
+{
   const [fournisseurs, setFournisseurs] = useState([]);
   const [code_fr, setCodeFr] = useState("");
   const [lib_fr, setLibFr] = useState("");
@@ -25,143 +49,155 @@ const FournisseurScreen = ({ navigation }) => {
   const [selectedCode, setSelectedCode] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
+  useEffect(() =>
+  {
     fetchFournisseurs();
   }, []);
 
-  const fetchFournisseurs = async () => {
+  const fetchFournisseurs = async () =>
+  {
     setLoading(true);
     const data = await getFournisseurs();
     setFournisseurs(data);
     setLoading(false);
   };
 
-  const handleAddOrUpdate = async () => {
-    if (!code_fr || !lib_fr || !tel_fr || !adress_fr) {
+  const handleAddOrUpdate = async () =>
+  {
+    if (!code_fr || !lib_fr || !tel_fr || !adress_fr)
+    {
       Alert.alert("Erreur", "Veuillez remplir tous les champs.");
       return;
     }
 
-    try {
-      if (selectedCode) {
+    try
+    {
+      if (selectedCode)
+      {
         await updateFournisseur(code_fr, lib_fr, tel_fr, adress_fr);
-      } else {
-        // Vérifier si le fournisseur existe déjà
-        const existingFournisseur = fournisseurs.find(f => f.code_fr === code_fr);
-        if (existingFournisseur) {
+      } else
+      {
+        const existingFournisseur = fournisseurs.find(
+          (f) => f.code_fr === code_fr
+        );
+        if (existingFournisseur)
+        {
           Alert.alert("Erreur", "Le fournisseur avec ce code existe déjà.");
           return;
         }
         await addFournisseur(code_fr, lib_fr, tel_fr, adress_fr);
       }
+
       setCodeFr("");
       setLibFr("");
       setTelFr("");
       setAdressFr("");
       setSelectedCode(null);
       fetchFournisseurs();
-    } catch (error) {
+    } catch (error)
+    {
       Alert.alert("Erreur", "Une erreur est survenue. " + error.message);
     }
   };
 
-  const handleDelete = async (code) => {
-    try {
+  const handleDelete = async (code) =>
+  {
+    try
+    {
       const suivis = await getSuiviAchatByFournisseur(code);
-      if (suivis && suivis.length > 0) {
+      if (suivis && suivis.length > 0)
+      {
         Alert.alert("Erreur", "Ce fournisseur est utilisé dans un suivi d'achat.");
-      } else {
+      } else
+      {
         await deleteFournisseur(code);
         fetchFournisseurs();
         Alert.alert("Succès", "Fournisseur supprimé.");
       }
-    } 
-    catch (error) {
+    } catch (error)
+    {
       Alert.alert("Erreur", "Problème lors de la suppression.");
     }
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Gestion des Fournisseurs</Text>
+    <View style={globalStyles.container}>
+      <Text style={globalStyles.title}>Gestion des Fournisseurs</Text>
 
       <TextInput
         placeholder="Code Fournisseur"
         value={code_fr}
         onChangeText={setCodeFr}
-        style={styles.input}
+        style={globalStyles.input}
         keyboardType="numeric"
       />
       <TextInput
         placeholder="Libellé"
         value={lib_fr}
         onChangeText={setLibFr}
-        style={styles.input}
+        style={globalStyles.input}
       />
       <TextInput
         placeholder="Téléphone"
         value={tel_fr}
         onChangeText={setTelFr}
-        style={styles.input}
+        style={globalStyles.input}
         keyboardType="numeric"
       />
       <TextInput
         placeholder="Adresse"
         value={adress_fr}
         onChangeText={setAdressFr}
-        style={styles.input}
-      />
-      <Button
-        title={selectedCode ? "Modifier" : "Ajouter"}
-        onPress={handleAddOrUpdate}
+        style={globalStyles.input}
       />
 
+      <TouchableOpacity
+        onPress={handleAddOrUpdate}
+        style={globalStyles.primaryBtn}
+      >
+        <Text style={globalStyles.btnText}>
+          {selectedCode ? "Modifier" : "Ajouter"}
+        </Text>
+      </TouchableOpacity>
+
       {loading ? (
-        <ActivityIndicator size="large" color="#0000ff" />
+        <ActivityIndicator size="large" color="#3B82F6" />
       ) : (
         <FlatList
           data={fournisseurs}
           keyExtractor={(item) => item.code_fr.toString()}
           renderItem={({ item }) => (
-            <TouchableOpacity
-              onPress={() => {
-                setCodeFr(item.code_fr);
-                setLibFr(item.lib_fr);
-                setTelFr(item.tel_fr);
-                setAdressFr(item.adress_fr);
-                setSelectedCode(item.code_fr);
-              }}
-            >
-              <View style={styles.item}>
-                <Text>{item.code_fr} - {item.lib_fr} - {item.tel_fr}</Text>
-                <Button
-                  title="Supprimer"
-                  color="#d9534f"
+            <View style={globalStyles.card}>
+              <Text style={globalStyles.cardText}>
+                {item.code_fr} - {item.lib_fr} - {item.tel_fr}
+              </Text>
+              <View style={globalStyles.cardActions}>
+                <TouchableOpacity
+                  style={globalStyles.editBtn}
+                  onPress={() =>
+                  {
+                    setCodeFr(item.code_fr);
+                    setLibFr(item.lib_fr);
+                    setTelFr(item.tel_fr);
+                    setAdressFr(item.adress_fr);
+                    setSelectedCode(item.code_fr);
+                  }}
+                >
+                  <Text style={globalStyles.btnText}>Modifier</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={globalStyles.deleteBtn}
                   onPress={() => handleDelete(item.code_fr)}
-                />
+                >
+                  <Text style={globalStyles.btnText}>Supprimer</Text>
+                </TouchableOpacity>
               </View>
-            </TouchableOpacity>
+            </View>
           )}
         />
       )}
-
-      <Button title="Suivant: Suivi Achats →" onPress={() => navigation.navigate("SuiviAchat")} />
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, backgroundColor: "#f9f9f9" },
-  title: { fontSize: 22, fontWeight: "bold", marginBottom: 15 },
-  input: { borderWidth: 1, padding: 10, marginBottom: 10, borderRadius: 5 },
-  item: {
-    padding: 10,
-    backgroundColor: "#fff",
-    borderRadius: 5,
-    marginBottom: 10,
-    borderColor: "#ccc",
-    borderWidth: 1,
-  },
-});
 
 export default FournisseurScreen;

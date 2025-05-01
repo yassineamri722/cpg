@@ -3,12 +3,12 @@ import {
   View,
   Text,
   TextInput,
-  Button,
+  TouchableOpacity,
   FlatList,
-  StyleSheet,
   Alert,
 } from "react-native";
 import { getDatabase, ref, get, push, update, remove } from "firebase/database";
+import styles from "./globalStyles"; // Assurez-vous que ce fichier est correctement importé
 
 const db = getDatabase();
 
@@ -27,38 +27,29 @@ export default function SuiviProduitScreen() {
     try {
       const snapshot = await get(ref(db, "suivi_produits"));
       const data = snapshot.val();
-      if (data) {
-        const suiviList = Object.entries(data).map(([id, value]) => ({
-          id,
-          ...value,
-        }));
-        setSuiviProduits(suiviList);
-      } else {
-        setSuiviProduits([]);
-      }
+      setSuiviProduits(
+        data
+          ? Object.entries(data).map(([id, value]) => ({ id, ...value }))
+          : []
+      );
     } catch (error) {
       console.error("Erreur de chargement:", error);
     }
   };
 
-  // Fonction de validation pour vérifier la présence du produit et du siège
   const controleCodes = async () => {
     try {
-      const produitSnapshot = await get(ref(db, `produits/${codeProduit}`));
-      const siegeSnapshot = await get(ref(db, `sieges/${codeSiege}`));
+      const prodSnap = await get(ref(db, `produits/${codeProduit}`));
+      const siegeSnap = await get(ref(db, `sieges/${codeSiege}`));
 
-      // Vérification de l'existence du produit
-      if (!produitSnapshot.exists()) {
+      if (!prodSnap.exists()) {
         Alert.alert("Erreur", "Produit introuvable");
         return false;
       }
-
-      // Vérification de l'existence du siège
-      if (!siegeSnapshot.exists()) {
+      if (!siegeSnap.exists()) {
         Alert.alert("Erreur", "Siège introuvable");
         return false;
       }
-
       return true;
     } catch (error) {
       console.error("Erreur de validation des codes:", error);
@@ -72,27 +63,23 @@ export default function SuiviProduitScreen() {
       Alert.alert("Erreur", "Tous les champs sont requis");
       return;
     }
+    if (!(await controleCodes())) return;
 
-    const isValid = await controleCodes(); // Vérifie les codes produit et siège
-    if (!isValid) return;
-
-    const suiviProduit = {
+    const payload = {
       codeProduit,
       codeSiege,
-      qteProduction: parseInt(qteProduction),
+      qteProduction: parseInt(qteProduction, 10),
       date: new Date().toISOString(),
     };
 
     try {
       if (editKey) {
-        // Mise à jour si l'élément existe déjà
         await update(ref(db, `suivi_produits/${editKey}`), {
-          qteProduction: suiviProduit.qteProduction,
+          qteProduction: payload.qteProduction,
         });
         setEditKey(null);
       } else {
-        // Ajout d'un nouvel élément
-        await push(ref(db, "suivi_produits"), suiviProduit);
+        await push(ref(db, "suivi_produits"), payload);
       }
       fetchSuiviProduits();
       resetForm();
@@ -107,6 +94,7 @@ export default function SuiviProduitScreen() {
       { text: "Annuler" },
       {
         text: "Supprimer",
+        style: "destructive",
         onPress: async () => {
           try {
             await remove(ref(db, `suivi_produits/${id}`));
@@ -116,16 +104,15 @@ export default function SuiviProduitScreen() {
             Alert.alert("Erreur", "Suppression échouée");
           }
         },
-        style: "destructive",
       },
     ]);
   };
 
-  const chargerSuiviProduit = (suiviProduit) => {
-    setCodeProduit(suiviProduit.codeProduit);
-    setCodeSiege(suiviProduit.codeSiege);
-    setQteProduction(String(suiviProduit.qteProduction));
-    setEditKey(suiviProduit.id);
+  const chargerSuiviProduit = (item) => {
+    setCodeProduit(item.codeProduit);
+    setCodeSiege(item.codeSiege);
+    setQteProduction(String(item.qteProduction));
+    setEditKey(item.id);
   };
 
   const resetForm = () => {
@@ -143,13 +130,13 @@ export default function SuiviProduitScreen() {
         style={styles.input}
         placeholder="Code Produit"
         value={codeProduit}
-        onChangeText={setCodeProduit} // Permet de modifier le code produit
+        onChangeText={setCodeProduit}
       />
       <TextInput
         style={styles.input}
         placeholder="Code Siège"
         value={codeSiege}
-        onChangeText={setCodeSiege} // Permet de modifier le code siège
+        onChangeText={setCodeSiege}
       />
       <TextInput
         style={styles.input}
@@ -159,87 +146,52 @@ export default function SuiviProduitScreen() {
         onChangeText={setQteProduction}
       />
 
-      <Button
-        title={editKey ? "Modifier Suivi" : "Ajouter Suivi"}
-        onPress={handleEnregistrer}
-      />
+      <TouchableOpacity style={styles.primaryBtn} onPress={handleEnregistrer}>
+        <Text style={styles.btnText}>
+          {editKey ? "Modifier Suivi" : "Ajouter Suivi"}
+        </Text>
+      </TouchableOpacity>
 
       {editKey && (
-        <View style={{ marginTop: 10 }}>
-          <Button title="Annuler modification" color="orange" onPress={resetForm} />
-        </View>
+        <TouchableOpacity style={styles.cancelBtn} onPress={resetForm}>
+          <Text style={styles.btnText}>Annuler modification</Text>
+        </TouchableOpacity>
       )}
 
       <FlatList
         data={suiviProduits}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-          <View style={styles.suiviItem}>
-            <Text style={styles.suiviText}>
+          <View style={styles.card}>
+            <Text style={styles.cardText}>
               Produit: {item.codeProduit} | Siège: {item.codeSiege}
             </Text>
-            <Text style={styles.suiviText}>
+            <Text style={styles.cardText}>
               Quantité: {item.qteProduction}
             </Text>
-            <Text style={styles.suiviText}>
+            <Text style={styles.cardText}>
               Date: {new Date(item.date).toLocaleString()}
             </Text>
-            <View style={styles.buttons}>
-              <Button title="Modifier" onPress={() => chargerSuiviProduit(item)} />
-              <Button
-                title="Supprimer"
-                color="red"
+            <View style={styles.cardActions}>
+              <TouchableOpacity
+                style={styles.editBtn}
+                onPress={() => chargerSuiviProduit(item)}
+              >
+                <Text style={styles.btnText}>Modifier</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.deleteBtn}
                 onPress={() => handleSupprimer(item.id)}
-              />
+              >
+                <Text style={styles.btnText}>Supprimer</Text>
+              </TouchableOpacity>
             </View>
           </View>
         )}
         ListEmptyComponent={
-          <Text style={styles.empty}>Aucun suivi de produit enregistré</Text>
+          <Text style={styles.subtitle}>Aucun suivi de produit enregistré</Text>
         }
       />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 20,
-    backgroundColor: "#f8f8f8",
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: "bold",
-    marginBottom: 20,
-    textAlign: "center",
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    padding: 10,
-    marginBottom: 10,
-    borderRadius: 6,
-    backgroundColor: "#fff",
-  },
-  suiviItem: {
-    backgroundColor: "#e0e0e0",
-    padding: 12,
-    marginBottom: 10,
-    borderRadius: 8,
-  },
-  suiviText: {
-    fontSize: 15,
-    marginBottom: 2,
-  },
-  buttons: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 10,
-  },
-  empty: {
-    textAlign: "center",
-    marginTop: 20,
-    color: "#888",
-  },
-});
